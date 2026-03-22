@@ -25,15 +25,15 @@
       <ul class="navbar-nav me-auto">
         <li class="nav-item">
           <a class="nav-link {% if request.endpoint == 'search' %}active{% endif %}"
-             href="{{ url_for('search') }}">Search</a>
+             href="{{ url_for('search', notebook=current_notebook) }}">Search</a>
         </li>
         <li class="nav-item">
           <a class="nav-link {% if request.endpoint in ('bookmarks', 'bookmarks_add', 'bookmarks_scrape_one', 'bookmarks_scrape_all', 'bookmarks_view') %}active{% endif %}"
-             href="{{ url_for('bookmarks') }}">Bookmarks</a>
+             href="{{ url_for('bookmarks', notebook=current_notebook) }}">Bookmarks</a>
         </li>
         <li class="nav-item">
           <a class="nav-link {% if request.endpoint == 'logs' %}active{% endif %}"
-             href="{{ url_for('logs') }}">Logs</a>
+             href="{{ url_for('logs', notebook=current_notebook) }}">Logs</a>
         </li>
       </ul>
 
@@ -48,7 +48,7 @@
             {% for nb in notebooks %}
               <li>
                 <a class="dropdown-item {% if nb == current_notebook %}active{% endif %}"
-                   href="{{ url_for('select_notebook', name=nb) }}">
+                   href="{{ url_for('search', notebook=nb) }}">
                   {{ nb }}
                 </a>
               </li>

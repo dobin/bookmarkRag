@@ -122,7 +122,7 @@
   <div class="container-fluid px-2">
 
     {# Search input #}
-    <form method="POST" action="{{ url_for('search') }}" id="search-form">
+    <form method="POST" action="{{ url_for('search', notebook=current_notebook) }}" id="search-form">
       <div class="mb-2">
         <textarea class="form-control" name="query" id="query-input"
                   rows="2" placeholder="Ask a question…"
@@ -168,7 +168,7 @@
     </form>
 
     {# Clear history — separate form so it doesn't interfere #}
-    <form method="POST" action="{{ url_for('search_clear') }}" class="d-inline ms-1">
+    <form method="POST" action="{{ url_for('search_clear', notebook=current_notebook) }}" class="d-inline ms-1">
       <button type="submit" class="btn btn-outline-secondary btn-sm mt-1"
               onclick="return confirm('Clear all history?')">
         Clear history
