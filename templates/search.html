@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Search – BookmarkRAG{% endblock %}
+{% block title %}BookmarkRAG {{ current_notebook if current_notebook else '' }} {% endblock %}
 
 {% block head %}
 <style>
@@ -159,7 +159,7 @@
 
         {# Submit #}
         <button type="submit" class="btn btn-primary btn-sm" id="submit-btn">
-          <span id="btn-label">Search</span>
+          <span id="btn-label">Query</span>
           <span id="btn-spinner" class="spinner-border spinner-border-sm ms-1 d-none"
                 role="status" aria-hidden="true"></span>
         </button>

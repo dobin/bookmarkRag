@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Logs – BookmarkRAG{% endblock %}
+{% block title %}BookmarkRAG {{ current_notebook if current_notebook else '' }} {% endblock %}
 
 {% block head %}
 <style>
