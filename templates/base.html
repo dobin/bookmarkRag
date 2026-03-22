@@ -28,6 +28,10 @@
              href="{{ url_for('search') }}">Search</a>
         </li>
         <li class="nav-item">
+          <a class="nav-link {% if request.endpoint in ('bookmarks', 'bookmarks_add', 'bookmarks_scrape_one', 'bookmarks_scrape_all', 'bookmarks_view') %}active{% endif %}"
+             href="{{ url_for('bookmarks') }}">Bookmarks</a>
+        </li>
+        <li class="nav-item">
           <a class="nav-link {% if request.endpoint == 'logs' %}active{% endif %}"
              href="{{ url_for('logs') }}">Logs</a>
         </li>
