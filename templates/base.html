@@ -17,6 +17,25 @@
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
   <div class="container-fluid">
     <a class="navbar-brand fw-bold" href="/">BookmarkRAG</a>
+
+    {# Notebook selector - between brand and nav links #}
+    <div class="dropdown me-3 d-none d-lg-block">
+      <a class="nav-link dropdown-toggle text-light" href="#" id="notebookDropdownInline"
+         role="button" data-bs-toggle="dropdown" aria-expanded="false">
+        📚 {{ current_notebook if current_notebook else 'Select Notebook' }}
+      </a>
+      <ul class="dropdown-menu" aria-labelledby="notebookDropdownInline">
+        {% for nb in notebooks %}
+          <li>
+            <a class="dropdown-item {% if nb == current_notebook %}active{% endif %}"
+               href="{{ url_for('search', notebook=nb) }}">
+              {{ nb }}
+            </a>
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
+
     <button class="navbar-toggler" type="button"
             data-bs-toggle="collapse" data-bs-target="#navmenu">
       <span class="navbar-toggler-icon"></span>
@@ -37,14 +56,14 @@
         </li>
       </ul>
 
-      {# Notebook selector - right-aligned #}
-      <ul class="navbar-nav ms-auto">
+      {# Notebook selector - visible in collapsed mobile menu #}
+      <ul class="navbar-nav d-lg-none">
         <li class="nav-item dropdown">
-          <a class="nav-link dropdown-toggle" href="#" id="notebookDropdown"
+          <a class="nav-link dropdown-toggle" href="#" id="notebookDropdownCollapsed"
              role="button" data-bs-toggle="dropdown" aria-expanded="false">
             📚 {{ current_notebook if current_notebook else 'Select Notebook' }}
           </a>
-          <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="notebookDropdown">
+          <ul class="dropdown-menu" aria-labelledby="notebookDropdownCollapsed">
             {% for nb in notebooks %}
               <li>
                 <a class="dropdown-item {% if nb == current_notebook %}active{% endif %}"
