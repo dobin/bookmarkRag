@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block title %}Logs – BookmarkRAG{% endblock %}
+
+{% block head %}
+<style>
+  .log-content {
+    background: #1e1e1e;
+    color: #d4d4d4;
+    font-size: 0.8rem;
+    height: calc(100vh - 56px - 110px);
+    overflow-y: scroll;
+    padding: 0.75rem 1rem;
+    border-radius: 0.375rem;
+    white-space: pre;
+    word-break: break-all;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="mt-3">
+  <h5 class="mb-3">Logs for <code>{{ current_notebook }}</code></h5>
+
+  {% if log_files %}
+    {% if log_files|length == 1 %}
+      {# Single log file - show directly without tabs #}
+      {% for name, content in log_files.items() %}
+        <div class="mb-2" style="font-size:0.85rem; color:#666;">
+          📄 {{ name }}
+        </div>
+        <pre class="log-content" id="log-content">{{ content }}</pre>
+      {% endfor %}
+    {% else %}
+      {# Multiple log files - show with tabs #}
+      <ul class="nav nav-tabs" id="logTabs" role="tablist">
+        {% for name in log_files %}
+          <li class="nav-item" role="presentation">
+            <button class="nav-link {% if loop.first %}active{% endif %}"
+                    id="tab-{{ loop.index }}"
+                    data-bs-toggle="tab"
+                    data-bs-target="#pane-{{ loop.index }}"
+                    type="button" role="tab">
+              {{ name }}
+            </button>
+          </li>
+        {% endfor %}
+      </ul>
+
+      {# Tab panes #}
+      <div class="tab-content border border-top-0 rounded-bottom" id="logTabContent">
+        {% for name, content in log_files.items() %}
+          <div class="tab-pane fade {% if loop.first %}show active{% endif %}"
+               id="pane-{{ loop.index }}"
+               role="tabpanel">
+            <pre class="log-content" id="log-pre-{{ loop.index }}">{{ content }}</pre>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+  {% else %}
+    <div class="alert alert-info">
+      No <code>.log</code> files found in <code>grag/{{ current_notebook }}/logs/</code>.
+    </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Scroll every log pane to the bottom
+  document.querySelectorAll('.log-content').forEach(function(el) {
+    el.scrollTop = el.scrollHeight;
+  });
+
+  // When a tab is shown, re-scroll to bottom (content may have been invisible)
+  document.querySelectorAll('[data-bs-toggle="tab"]').forEach(function(btn) {
+    btn.addEventListener('shown.bs.tab', function(e) {
+      const target = document.querySelector(e.target.dataset.bsTarget + ' .log-content');
+      if (target) target.scrollTop = target.scrollHeight;
+    });
+  });
+</script>
+{% endblock %}
