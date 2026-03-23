@@ -3,15 +3,19 @@ Sample script showing how to run graphrag queries programmatically,
 equivalent to: graphrag query --root . --method <local|global|drift|basic> --query "..."
 """
 
+import logging
 from pathlib import Path
 from typing import Any
 
+import pandas as pd
 from graphrag.cli.query import (
     run_local_search,
     run_global_search,
     run_drift_search,
     run_basic_search,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def local_search(query: str, notebook: str, community_level: int = 2) -> tuple[str, Any]:
@@ -68,6 +72,46 @@ def basic_search(query: str, notebook: str) -> tuple[str, Any]:
         query=query,
         verbose=False,
     )
+
+
+def resolve_sources(context_data: dict, notebook: str) -> list[str]:
+    """Resolve context_data from a search result to a list of source document filenames.
+
+    Traces text-unit short_ids from context_data["sources"] through
+    text_units.parquet -> documents.parquet to get the original filenames.
+    """
+    # Use absolute path because graphrag's run_*_search changes cwd
+    output_dir = Path(__file__).resolve().parent / "grag" / notebook / "output"
+    tu_path = output_dir / "text_units.parquet"
+    doc_path = output_dir / "documents.parquet"
+
+    if not tu_path.exists() or not doc_path.exists():
+        return []
+
+    sources_df = context_data.get("sources")
+    if sources_df is None or not hasattr(sources_df, "empty") or sources_df.empty:
+        return []
+
+    try:
+        text_units = pd.read_parquet(tu_path, columns=["human_readable_id", "document_id"])
+        documents = pd.read_parquet(doc_path, columns=["id", "title"])
+    except Exception:
+        logger.exception("Failed to read parquet files for source resolution")
+        return []
+
+    doc_titles = dict(zip(documents["id"], documents["title"]))
+    tu_to_doc = dict(zip(text_units["human_readable_id"].astype(str), text_units["document_id"]))
+
+    seen = set()
+    result = []
+    for short_id in sources_df["id"]:
+        doc_id = tu_to_doc.get(str(short_id))
+        if doc_id and doc_id not in seen:
+            seen.add(doc_id)
+            title = doc_titles.get(doc_id)
+            if title:
+                result.append(title)
+    return result
 
 
 if __name__ == "__main__":

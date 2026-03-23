@@ -64,6 +64,19 @@
     color: #842029;
   }
 
+  /* Sources box */
+  .sources-box {
+    max-width: 80%;
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 0.5rem;
+    padding: 0.4rem 0.8rem;
+    font-size: 0.8rem;
+  }
+  .sources-box a {
+    word-break: break-all;
+  }
+
   /* Sticky input form */
   #query-form-wrapper {
     position: fixed;
@@ -112,6 +125,29 @@
         {% endif %}
       </div>
     </div>
+
+    {# Source documents #}
+    {% if entry.sources %}
+    <div class="bubble-assistant">
+      <div class="sources-box">
+        <details>
+          <summary class="text-muted" style="font-size:0.8rem; cursor:pointer;">
+            📄 Sources ({{ entry.sources | length }})
+          </summary>
+          <ul class="list-unstyled mb-0 mt-1" style="font-size:0.8rem;">
+            {% for src in entry.sources %}
+              <li class="mb-1">
+                <a href="{{ url_for('bookmarks_view', notebook=entry.notebook, filename=src) }}"
+                   target="_blank" rel="noopener">
+                  {{ src }}
+                </a>
+              </li>
+            {% endfor %}
+          </ul>
+        </details>
+      </div>
+    </div>
+    {% endif %}
   {% endfor %}
 </div>
 

@@ -5,7 +5,7 @@ from pathlib import Path
 
 from flask import Flask, abort, flash, redirect, render_template, request, url_for
 
-from graphrag_api import basic_search, drift_search, global_search, local_search
+from graphrag_api import basic_search, drift_search, global_search, local_search, resolve_sources
 from scraper import scrape_single_url, url_to_filename
 from summarizer import summarize_all, summarize_url
 
@@ -31,22 +31,23 @@ def inject_notebooks():
     }
 
 
-def _run_search(method: str, query: str, community_level: int, notebook: str) -> tuple[str, str | None]:
-    """Dispatch to the correct search function. Returns (response, error)."""
+def _run_search(method: str, query: str, community_level: int, notebook: str) -> tuple[str, str | None, list[str]]:
+    """Dispatch to the correct search function. Returns (response, error, sources)."""
     try:
         if method == "local":
-            response, _ = local_search(query, notebook=notebook, community_level=community_level)
+            response, context_data = local_search(query, notebook=notebook, community_level=community_level)
         elif method == "global":
-            response, _ = global_search(query, notebook=notebook, community_level=community_level)
+            response, context_data = global_search(query, notebook=notebook, community_level=community_level)
         elif method == "drift":
-            response, _ = drift_search(query, notebook=notebook, community_level=community_level)
+            response, context_data = drift_search(query, notebook=notebook, community_level=community_level)
         elif method == "basic":
-            response, _ = basic_search(query, notebook=notebook)
+            response, context_data = basic_search(query, notebook=notebook)
         else:
-            return "", f"Unknown search method: {method}"
-        return response, None
+            return "", f"Unknown search method: {method}", []
+        sources = resolve_sources(context_data, notebook) if context_data else []
+        return response, None, sources
     except Exception as exc:
-        return "", str(exc)
+        return "", str(exc), []
 
 
 @app.route("/")
@@ -71,7 +72,7 @@ def search(notebook: str):
         community_level = max(0, min(4, community_level))
 
         if query:
-            response, error = _run_search(method, query, community_level, notebook)
+            response, error, sources = _run_search(method, query, community_level, notebook)
             search_history.setdefault(notebook, []).append({
                 "query": query,
                 "method": method,
@@ -79,6 +80,7 @@ def search(notebook: str):
                 "notebook": notebook,
                 "response": response,
                 "error": error,
+                "sources": sources,
                 "timestamp": datetime.now().strftime("%H:%M:%S"),
             })
 
