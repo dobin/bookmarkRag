@@ -7,6 +7,7 @@ from flask import Flask, abort, flash, redirect, render_template, request, url_f
 
 from graphrag_api import basic_search, drift_search, global_search, local_search
 from scraper import scrape_single_url, url_to_filename
+from summarizer import summarize_all, summarize_url
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
@@ -119,10 +120,15 @@ def _input_dir(notebook: str) -> Path:
     return Path("grag") / notebook / "input"
 
 
+def _summaries_dir(notebook: str) -> Path:
+    return Path("grag") / notebook / "summaries"
+
+
 def _load_bookmarks(notebook: str) -> list[dict]:
-    """Return list of {url, filename, scraped} for the given notebook."""
+    """Return list of {url, filename, scraped, summarized} for the given notebook."""
     bfile = _bookmarks_file(notebook)
     input_dir = _input_dir(notebook)
+    summaries_dir = _summaries_dir(notebook)
     if not bfile.exists():
         return []
     entries = []
@@ -132,9 +138,11 @@ def _load_bookmarks(notebook: str) -> list[dict]:
         if not url or url in seen:
             continue
         seen.add(url)
-        filename = url_to_filename(url) + ".md"
+        base = url_to_filename(url)
+        filename = base + ".md"
         scraped = (input_dir / filename).exists()
-        entries.append({"url": url, "filename": filename, "scraped": scraped})
+        summarized = (summaries_dir / (base + ".llm")).exists()
+        entries.append({"url": url, "filename": filename, "scraped": scraped, "summarized": summarized})
     return entries
 
 
@@ -177,6 +185,12 @@ def bookmarks_add(notebook: str):
     success, error = scrape_single_url(url, output_dir)
     if success:
         flash(f"Added and scraped: {url}", "success")
+        # Summarize the newly scraped file
+        ok, sum_err = summarize_url(url, notebook)
+        if ok:
+            flash(f"Summary generated for: {url}", "success")
+        else:
+            flash(f"Scraping OK but summarization failed: {sum_err}", "warning")
     else:
         flash(f"Added to bookmarks, but scraping failed: {error}", "warning")
 
@@ -264,6 +278,44 @@ def bookmarks_view(notebook: str):
         notebook=notebook,
         current_notebook=notebook,
     )
+
+
+@app.route("/<notebook>/bookmarks/summarize", methods=["POST"])
+def bookmarks_summarize_one(notebook: str):
+    """Summarize (or re-summarize) a single URL."""
+    if notebook not in NOTEBOOKS:
+        abort(404)
+    url = request.form.get("url", "").strip()
+
+    if not url.startswith("http://") and not url.startswith("https://"):
+        flash("Invalid URL", "danger")
+        return redirect(url_for("bookmarks", notebook=notebook))
+
+    success, error = summarize_url(url, notebook, force=True)
+    if success:
+        flash(f"Summary generated: {url}", "success")
+    else:
+        flash(f"Summarization failed for {url}: {error}", "danger")
+
+    return redirect(url_for("bookmarks", notebook=notebook))
+
+
+@app.route("/<notebook>/bookmarks/summarize_all", methods=["POST"])
+def bookmarks_summarize_all(notebook: str):
+    """Summarize all scraped .md files that do not yet have a .llm summary."""
+    if notebook not in NOTEBOOKS:
+        abort(404)
+
+    ok_count, skipped_count, errors = summarize_all(notebook)
+
+    if ok_count:
+        flash(f"Summarized {ok_count} file(s). {skipped_count} already had summaries.", "success")
+    elif not errors:
+        flash("All scraped bookmarks already have summaries.", "info")
+    for msg in errors:
+        flash(f"Failed — {msg}", "danger")
+
+    return redirect(url_for("bookmarks", notebook=notebook))
 
 
 if __name__ == "__main__":

@@ -36,22 +36,31 @@
       <span class="text-muted" style="font-size:0.9rem;">
         {{ entries|length }} bookmark{{ 's' if entries|length != 1 }} —
         {{ entries|selectattr('scraped')|list|length }} scraped,
+        {{ entries|selectattr('summarized')|list|length }} summarized,
         {{ entries|rejectattr('scraped')|list|length }} pending
       </span>
-      <form method="POST" action="{{ url_for('bookmarks_scrape_all', notebook=current_notebook) }}">
-        <button type="submit" class="btn btn-outline-secondary btn-sm"
-                onclick="return confirm('Scrape all pending bookmarks?')">
-          Scrape All Pending
-        </button>
-      </form>
+      <div class="d-flex gap-2">
+        <form method="POST" action="{{ url_for('bookmarks_summarize_all', notebook=current_notebook) }}">
+          <button type="submit" class="btn btn-outline-info btn-sm"
+                  onclick="return confirm('Summarize all scraped bookmarks without a summary?')">
+            Summarize All Scraped
+          </button>
+        </form>
+        <form method="POST" action="{{ url_for('bookmarks_scrape_all', notebook=current_notebook) }}">
+          <button type="submit" class="btn btn-outline-secondary btn-sm"
+                  onclick="return confirm('Scrape all pending bookmarks?')">
+            Scrape All Pending
+          </button>
+        </form>
+      </div>
     </div>
 
     <table class="table table-sm table-hover align-middle">
       <thead class="table-light">
         <tr>
           <th>URL</th>
-          <th style="width:110px;">Status</th>
-          <th style="width:160px;">Actions</th>
+          <th style="width:160px;">Status</th>
+          <th style="width:220px;">Actions</th>
         </tr>
       </thead>
       <tbody>
@@ -66,9 +75,14 @@
               {% else %}
                 <span class="badge bg-secondary">Pending</span>
               {% endif %}
+              {% if entry.summarized %}
+                <span class="badge bg-info">Summarized</span>
+              {% elif entry.scraped %}
+                <span class="badge bg-warning text-dark">No summary</span>
+              {% endif %}
             </td>
             <td>
-              <div class="d-flex gap-1">
+              <div class="d-flex gap-1 flex-wrap">
                 {% if entry.scraped %}
                   <a href="{{ url_for('bookmarks_view', notebook=current_notebook, filename=entry.filename) }}"
                      class="btn btn-outline-primary btn-sm">View</a>
@@ -79,6 +93,14 @@
                     {{ 'Re-scrape' if entry.scraped else 'Scrape' }}
                   </button>
                 </form>
+                {% if entry.scraped %}
+                  <form method="POST" action="{{ url_for('bookmarks_summarize_one', notebook=current_notebook) }}" class="d-inline">
+                    <input type="hidden" name="url" value="{{ entry.url }}">
+                    <button type="submit" class="btn btn-outline-info btn-sm">
+                      {{ 'Re-summarize' if entry.summarized else 'Summarize' }}
+                    </button>
+                  </form>
+                {% endif %}
               </div>
             </td>
           </tr>
@@ -93,3 +115,19 @@
   {% endif %}
 </div>
 {% endblock %}
+
+{% block scripts %}
+<script>
+  document.querySelectorAll('form[action*="summarize"]').forEach(function(form) {
+    form.addEventListener('submit', function() {
+      var btn = form.querySelector('button[type="submit"]');
+      if (!btn) return;
+      btn.disabled = true;
+      btn.innerHTML =
+        '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>'
+        + 'Summarizing…';
+    });
+  });
+</script>
+{% endblock %}
+
