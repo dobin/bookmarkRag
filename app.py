@@ -280,6 +280,39 @@ def bookmarks_view(notebook: str):
     )
 
 
+@app.route("/<notebook>/bookmarks/view_summary")
+def bookmarks_view_summary(notebook: str):
+    if notebook not in NOTEBOOKS:
+        abort(404)
+    filename = request.args.get("filename", "")
+
+    # Security: prevent path traversal — filename must be a plain basename with .md extension
+    safe_filename = Path(filename).name
+    if safe_filename != filename or not safe_filename.endswith(".md") or not safe_filename:
+        flash("Invalid filename.", "danger")
+        return redirect(url_for("bookmarks", notebook=notebook))
+
+    llm_filename = safe_filename[:-3] + ".llm"
+    llm_path = _summaries_dir(notebook) / llm_filename
+    if not llm_path.exists():
+        flash(f"Summary file not found: {llm_filename}", "warning")
+        return redirect(url_for("bookmarks", notebook=notebook))
+
+    try:
+        content = llm_path.read_text(encoding="utf-8", errors="replace")
+    except OSError as exc:
+        flash(f"Could not read file: {exc}", "danger")
+        return redirect(url_for("bookmarks", notebook=notebook))
+
+    return render_template(
+        "bookmarks_view.html",
+        content=content,
+        filename=llm_filename,
+        notebook=notebook,
+        current_notebook=notebook,
+    )
+
+
 @app.route("/<notebook>/bookmarks/summarize", methods=["POST"])
 def bookmarks_summarize_one(notebook: str):
     """Summarize (or re-summarize) a single URL."""
