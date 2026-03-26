@@ -86,7 +86,10 @@ def search(notebook: str):
 
         return redirect(url_for("search", notebook=notebook))
 
-    return render_template("search.html", history=search_history.get(notebook, []), notebooks=NOTEBOOKS, current_notebook=notebook)
+    hist = search_history.get(notebook, [])
+    last_method = hist[-1]["method"] if hist else "local"
+    last_community_level = hist[-1]["community_level"] if hist else 2
+    return render_template("search.html", history=hist, last_method=last_method, last_community_level=last_community_level, notebooks=NOTEBOOKS, current_notebook=notebook)
 
 
 @app.route("/<notebook>/search/clear", methods=["POST"])

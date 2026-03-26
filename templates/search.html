@@ -174,7 +174,7 @@
             <div class="form-check form-check-inline mb-0">
               <input class="form-check-input method-radio" type="radio"
                      name="method" id="method-{{ m }}" value="{{ m }}"
-                     {% if m == 'local' %}checked{% endif %}>
+                     {% if m == last_method %}checked{% endif %}>
               <label class="form-check-label" for="method-{{ m }}">{{ m|capitalize }}</label>
             </div>
           {% endfor %}
@@ -188,7 +188,7 @@
           <select class="form-select form-select-sm" name="community_level"
                   id="community-level" style="width:5rem;">
             {% for lvl in range(5) %}
-              <option value="{{ lvl }}" {% if lvl == 2 %}selected{% endif %}>{{ lvl }}</option>
+              <option value="{{ lvl }}" {% if lvl == last_community_level %}selected{% endif %}>{{ lvl }}</option>
             {% endfor %}
           </select>
         </div>
