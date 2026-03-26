@@ -51,6 +51,10 @@
              href="{{ url_for('bookmarks', notebook=current_notebook) }}">Bookmarks</a>
         </li>
         <li class="nav-item">
+          <a class="nav-link {% if request.endpoint == 'search' %}active{% endif %}"
+             href="{{ url_for('search', notebook=current_notebook) }}">Search</a>
+        </li>
+        <li class="nav-item">
           <a class="nav-link {% if request.endpoint == 'logs' %}active{% endif %}"
              href="{{ url_for('logs', notebook=current_notebook) }}">Logs</a>
         </li>

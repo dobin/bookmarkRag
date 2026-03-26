@@ -1,9 +1,11 @@
 import glob
 import os
+import re
 from datetime import datetime
 from pathlib import Path
 
 from flask import Flask, abort, flash, redirect, render_template, request, url_for
+from markupsafe import Markup, escape
 
 from graphrag_api import basic_search, drift_search, global_search, local_search, resolve_sources
 from scraper import scrape_single_url, url_to_filename
@@ -354,6 +356,61 @@ def bookmarks_summarize_all(notebook: str):
         flash(f"Failed — {msg}", "danger")
 
     return redirect(url_for("bookmarks", notebook=notebook))
+
+
+@app.route("/<notebook>/search", methods=["GET", "POST"])
+def search(notebook: str):
+    if notebook not in NOTEBOOKS:
+        abort(404)
+
+    query = ""
+    search_in = "summaries"
+    results = []
+    searched = False
+
+    if request.method == "POST":
+        query = request.form.get("query", "").strip()
+        search_in = request.form.get("search_in", "summaries")
+        if search_in not in ("summaries", "input"):
+            search_in = "summaries"
+        searched = True
+
+        if query:
+            if search_in == "summaries":
+                search_dir = _summaries_dir(notebook)
+                pattern = "*.llm"
+            else:
+                search_dir = _input_dir(notebook)
+                pattern = "*.md"
+
+            if search_dir.exists():
+                escaped_query = re.escape(query)
+                for filepath in sorted(search_dir.glob(pattern)):
+                    try:
+                        text = filepath.read_text(encoding="utf-8", errors="replace")
+                    except OSError:
+                        continue
+                    matches = []
+                    for lineno, line in enumerate(text.splitlines(), 1):
+                        if re.search(escaped_query, line, re.IGNORECASE):
+                            highlighted = Markup(re.sub(
+                                f"({escaped_query})",
+                                r"<mark>\1</mark>",
+                                escape(line),
+                                flags=re.IGNORECASE,
+                            ))
+                            matches.append({"lineno": lineno, "text": highlighted})
+                    if matches:
+                        results.append({"filename": filepath.name, "matches": matches})
+
+    return render_template(
+        "search.html",
+        query=query,
+        search_in=search_in,
+        results=results,
+        searched=searched,
+        current_notebook=notebook,
+    )
 
 
 if __name__ == "__main__":
