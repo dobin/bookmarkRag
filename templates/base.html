@@ -28,7 +28,7 @@
         {% for nb in notebooks %}
           <li>
             <a class="dropdown-item {% if nb == current_notebook %}active{% endif %}"
-               href="{{ url_for('search', notebook=nb) }}">
+               href="{{ url_for('ask', notebook=nb) }}">
               {{ nb }}
             </a>
           </li>
@@ -43,8 +43,8 @@
     <div class="collapse navbar-collapse" id="navmenu">
       <ul class="navbar-nav me-auto">
         <li class="nav-item">
-          <a class="nav-link {% if request.endpoint == 'search' %}active{% endif %}"
-             href="{{ url_for('search', notebook=current_notebook) }}">Query</a>
+          <a class="nav-link {% if request.endpoint == 'ask' %}active{% endif %}"
+             href="{{ url_for('ask', notebook=current_notebook) }}">Query</a>
         </li>
         <li class="nav-item">
           <a class="nav-link {% if request.endpoint in ('bookmarks', 'bookmarks_add', 'bookmarks_scrape_one', 'bookmarks_scrape_all', 'bookmarks_view') %}active{% endif %}"
@@ -67,7 +67,7 @@
             {% for nb in notebooks %}
               <li>
                 <a class="dropdown-item {% if nb == current_notebook %}active{% endif %}"
-                   href="{{ url_for('search', notebook=nb) }}">
+                   href="{{ url_for('ask', notebook=nb) }}">
                   {{ nb }}
                 </a>
               </li>

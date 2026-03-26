@@ -95,7 +95,7 @@
 <div id="chat-history">
   {% if not history %}
     <p class="text-muted text-center mt-4" id="empty-msg">
-      No searches yet. Ask something below.
+      No questions yet. Ask something below.
     </p>
   {% endif %}
 
@@ -157,8 +157,8 @@
 <div id="query-form-wrapper">
   <div class="container-fluid px-2">
 
-    {# Search input #}
-    <form method="POST" action="{{ url_for('search', notebook=current_notebook) }}" id="search-form">
+    {# Ask input #}
+    <form method="POST" action="{{ url_for('ask', notebook=current_notebook) }}" id="ask-form">
       <div class="mb-2">
         <textarea class="form-control" name="query" id="query-input"
                   rows="2" placeholder="Ask a question…"
@@ -204,7 +204,7 @@
     </form>
 
     {# Clear history — separate form so it doesn't interfere #}
-    <form method="POST" action="{{ url_for('search_clear', notebook=current_notebook) }}" class="d-inline ms-1">
+    <form method="POST" action="{{ url_for('ask_clear', notebook=current_notebook) }}" class="d-inline ms-1">
       <button type="submit" class="btn btn-outline-secondary btn-sm mt-1"
               onclick="return confirm('Clear all history?')">
         Clear history
@@ -248,13 +248,13 @@
     document.getElementById('btn-label').textContent = 'Querying...';
   }
 
-  document.getElementById('search-form').addEventListener('submit', activateSpinner);
+  document.getElementById('ask-form').addEventListener('submit', activateSpinner);
 
   // Allow Ctrl+Enter / Cmd+Enter to submit
   document.getElementById('query-input').addEventListener('keydown', function(e) {
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
       activateSpinner();
-      document.getElementById('search-form').submit();
+      document.getElementById('ask-form').submit();
     }
   });
 </script>

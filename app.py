@@ -12,12 +12,12 @@ from summarizer import summarize_all, summarize_url
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
 
-# In-memory search history – kept at module level to avoid Flask session
+# In-memory ask history – kept at module level to avoid Flask session
 # cookie size limits (LLM responses can easily exceed 4 KB).
 # Keyed by notebook name so each tab/notebook has isolated history.
-search_history: dict[str, list[dict]] = {}
+ask_history: dict[str, list[dict]] = {}
 
-SEARCH_METHODS = ["local", "global", "drift", "basic"]
+ASK_METHODS = ["local", "global", "drift", "basic"]
 NOTEBOOKS = sorted(p.name for p in Path("grag").iterdir() if p.is_dir())
 
 
@@ -31,8 +31,8 @@ def inject_notebooks():
     }
 
 
-def _run_search(method: str, query: str, community_level: int, notebook: str) -> tuple[str, str | None, list[str]]:
-    """Dispatch to the correct search function. Returns (response, error, sources)."""
+def _run_ask(method: str, query: str, community_level: int, notebook: str) -> tuple[str, str | None, list[str]]:
+    """Dispatch to the correct ask function. Returns (response, error, sources)."""
     try:
         if method == "local":
             response, context_data = local_search(query, notebook=notebook, community_level=community_level)
@@ -43,7 +43,7 @@ def _run_search(method: str, query: str, community_level: int, notebook: str) ->
         elif method == "basic":
             response, context_data = basic_search(query, notebook=notebook)
         else:
-            return "", f"Unknown search method: {method}", []
+            return "", f"Unknown ask method: {method}", []
         sources = resolve_sources(context_data, notebook) if context_data else []
         return response, None, sources
     except Exception as exc:
@@ -53,12 +53,12 @@ def _run_search(method: str, query: str, community_level: int, notebook: str) ->
 @app.route("/")
 def index():
     if NOTEBOOKS:
-        return redirect(url_for("search", notebook=NOTEBOOKS[0]))
+        return redirect(url_for("ask", notebook=NOTEBOOKS[0]))
     return "No notebooks found.", 404
 
 
-@app.route("/<notebook>/search", methods=["GET", "POST"])
-def search(notebook: str):
+@app.route("/<notebook>/ask", methods=["GET", "POST"])
+def ask(notebook: str):
     if notebook not in NOTEBOOKS:
         abort(404)
 
@@ -67,13 +67,13 @@ def search(notebook: str):
         method = request.form.get("method", "local")
         community_level = int(request.form.get("community_level", 2))
 
-        if method not in SEARCH_METHODS:
+        if method not in ASK_METHODS:
             method = "local"
         community_level = max(0, min(4, community_level))
 
         if query:
-            response, error, sources = _run_search(method, query, community_level, notebook)
-            search_history.setdefault(notebook, []).append({
+            response, error, sources = _run_ask(method, query, community_level, notebook)
+            ask_history.setdefault(notebook, []).append({
                 "query": query,
                 "method": method,
                 "community_level": community_level,
@@ -84,20 +84,20 @@ def search(notebook: str):
                 "timestamp": datetime.now().strftime("%H:%M:%S"),
             })
 
-        return redirect(url_for("search", notebook=notebook))
+        return redirect(url_for("ask", notebook=notebook))
 
-    hist = search_history.get(notebook, [])
+    hist = ask_history.get(notebook, [])
     last_method = hist[-1]["method"] if hist else "local"
     last_community_level = hist[-1]["community_level"] if hist else 2
-    return render_template("search.html", history=hist, last_method=last_method, last_community_level=last_community_level, notebooks=NOTEBOOKS, current_notebook=notebook)
+    return render_template("ask.html", history=hist, last_method=last_method, last_community_level=last_community_level, notebooks=NOTEBOOKS, current_notebook=notebook)
 
 
-@app.route("/<notebook>/search/clear", methods=["POST"])
-def search_clear(notebook: str):
+@app.route("/<notebook>/ask/clear", methods=["POST"])
+def ask_clear(notebook: str):
     if notebook not in NOTEBOOKS:
         abort(404)
-    search_history.pop(notebook, None)
-    return redirect(url_for("search", notebook=notebook))
+    ask_history.pop(notebook, None)
+    return redirect(url_for("ask", notebook=notebook))
 
 
 @app.route("/<notebook>/logs")
