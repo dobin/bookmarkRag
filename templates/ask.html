@@ -244,15 +244,6 @@
       </div>
     </form>
 
-    {# Clear session entries — separate form so it doesn't interfere #}
-    <form method="POST" action="{{ url_for('ask_clear', notebook=current_notebook) }}" class="d-inline ms-1">
-      <input type="hidden" name="session" value="{{ current_session_id }}">
-      <button type="submit" class="btn btn-outline-secondary btn-sm mt-1"
-              onclick="return confirm('Clear all messages in this session?')">
-        Clear history
-      </button>
-    </form>
-
   </div>
 </div>
 {% endblock %}

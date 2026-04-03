@@ -232,20 +232,6 @@ def ask_delete(notebook: str):
     return redirect(url_for("ask", notebook=notebook))
 
 
-@app.route("/<notebook>/ask/clear", methods=["POST"])
-def ask_clear(notebook: str):
-    """Clear all entries from the current session (keeps the file)."""
-    if notebook not in NOTEBOOKS:
-        abort(404)
-    session_id = request.form.get("session", "")
-    if session_id:
-        sess = _load_session(notebook, session_id)
-        if sess:
-            sess["entries"] = []
-            _save_session(notebook, sess)
-    return redirect(url_for("ask", notebook=notebook, session=session_id))
-
-
 @app.route("/<notebook>/logs")
 def logs(notebook: str):
     if notebook not in NOTEBOOKS:
