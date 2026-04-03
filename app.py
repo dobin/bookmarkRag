@@ -1,4 +1,5 @@
 import glob
+import json
 import os
 import re
 from datetime import datetime
@@ -14,13 +15,105 @@ from summarizer import summarize_all, summarize_url
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
 
-# In-memory ask history – kept at module level to avoid Flask session
-# cookie size limits (LLM responses can easily exceed 4 KB).
-# Keyed by notebook name so each tab/notebook has isolated history.
-ask_history: dict[str, list[dict]] = {}
-
 ASK_METHODS = ["local", "global", "drift", "basic"]
 NOTEBOOKS = sorted(p.name for p in Path("grag").iterdir() if p.is_dir())
+
+# Resolve once at startup so relative paths aren't affected by cwd changes.
+_BASE_DIR = Path(__file__).resolve().parent
+
+# Tracks which chat session is active per notebook (in-memory; on restart
+# defaults to the most recent session).
+current_sessions: dict[str, str] = {}
+
+
+def _chat_dir(notebook: str) -> Path:
+    return _BASE_DIR / "grag" / notebook / "chat"
+
+
+def _create_session() -> dict:
+    """Create a new empty session dict."""
+    now = datetime.now()
+    session_id = now.strftime("%Y%m%d_%H%M%S")
+    return {
+        "id": session_id,
+        "created": now.isoformat(timespec="seconds"),
+        "entries": [],
+    }
+
+
+def _save_session(notebook: str, session: dict) -> None:
+    """Write a session dict to its JSON file."""
+    d = _chat_dir(notebook)
+    d.mkdir(parents=True, exist_ok=True)
+    path = d / f"{session['id']}.json"
+    path.write_text(json.dumps(session, indent=2, ensure_ascii=False), encoding="utf-8")
+
+
+def _load_session(notebook: str, session_id: str) -> dict | None:
+    """Load a session by ID. Returns None if not found."""
+    # Validate session_id is a safe basename (no path traversal)
+    if not session_id or session_id != Path(session_id).name or "/" in session_id:
+        return None
+    path = _chat_dir(notebook) / f"{session_id}.json"
+    if not path.exists():
+        return None
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return None
+
+
+def _list_sessions(notebook: str) -> list[dict]:
+    """Return [{id, created, preview}] for all sessions, newest first."""
+    d = _chat_dir(notebook)
+    if not d.exists():
+        return []
+    sessions = []
+    for p in sorted(d.glob("*.json"), reverse=True):
+        try:
+            data = json.loads(p.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            continue
+        entries = data.get("entries", [])
+        preview = entries[0]["query"][:60] if entries else "(empty)"
+        sessions.append({
+            "id": data["id"],
+            "created": data.get("created", ""),
+            "preview": preview,
+            "count": len(entries),
+        })
+    return sessions
+
+
+def _get_or_create_session(notebook: str, session_id: str | None = None) -> dict:
+    """Resolve the session to display: requested > current > latest > new."""
+    # Try the explicitly requested session
+    if session_id:
+        sess = _load_session(notebook, session_id)
+        if sess:
+            current_sessions[notebook] = sess["id"]
+            return sess
+
+    # Try the in-memory current session
+    cur = current_sessions.get(notebook)
+    if cur:
+        sess = _load_session(notebook, cur)
+        if sess:
+            return sess
+
+    # Try the latest session on disk
+    all_sessions = _list_sessions(notebook)
+    if all_sessions:
+        sess = _load_session(notebook, all_sessions[0]["id"])
+        if sess:
+            current_sessions[notebook] = sess["id"]
+            return sess
+
+    # Create a brand-new session
+    sess = _create_session()
+    _save_session(notebook, sess)
+    current_sessions[notebook] = sess["id"]
+    return sess
 
 
 @app.context_processor
@@ -68,14 +161,17 @@ def ask(notebook: str):
         query = request.form.get("query", "").strip()
         method = request.form.get("method", "local")
         community_level = int(request.form.get("community_level", 2))
+        session_id = request.form.get("session", "")
 
         if method not in ASK_METHODS:
             method = "local"
         community_level = max(0, min(4, community_level))
 
+        sess = _get_or_create_session(notebook, session_id or None)
+
         if query:
             response, error, sources = _run_ask(method, query, community_level, notebook)
-            ask_history.setdefault(notebook, []).append({
+            sess["entries"].append({
                 "query": query,
                 "method": method,
                 "community_level": community_level,
@@ -85,21 +181,69 @@ def ask(notebook: str):
                 "sources": sources,
                 "timestamp": datetime.now().strftime("%H:%M:%S"),
             })
+            _save_session(notebook, sess)
 
-        return redirect(url_for("ask", notebook=notebook))
+        return redirect(url_for("ask", notebook=notebook, session=sess["id"]))
 
-    hist = ask_history.get(notebook, [])
+    # GET — load requested or current session
+    requested = request.args.get("session", "")
+    sess = _get_or_create_session(notebook, requested or None)
+    hist = sess.get("entries", [])
+    sessions = _list_sessions(notebook)
+
     last_method = hist[-1]["method"] if hist else "local"
     last_community_level = hist[-1]["community_level"] if hist else 2
-    return render_template("ask.html", history=hist, last_method=last_method, last_community_level=last_community_level, notebooks=NOTEBOOKS, current_notebook=notebook)
+    return render_template(
+        "ask.html",
+        history=hist,
+        last_method=last_method,
+        last_community_level=last_community_level,
+        notebooks=NOTEBOOKS,
+        current_notebook=notebook,
+        sessions=sessions,
+        current_session_id=sess["id"],
+    )
+
+
+@app.route("/<notebook>/ask/new", methods=["POST"])
+def ask_new(notebook: str):
+    """Create a new chat session."""
+    if notebook not in NOTEBOOKS:
+        abort(404)
+    sess = _create_session()
+    _save_session(notebook, sess)
+    current_sessions[notebook] = sess["id"]
+    return redirect(url_for("ask", notebook=notebook, session=sess["id"]))
+
+
+@app.route("/<notebook>/ask/delete", methods=["POST"])
+def ask_delete(notebook: str):
+    """Delete a specific chat session file."""
+    if notebook not in NOTEBOOKS:
+        abort(404)
+    session_id = request.form.get("session", "")
+    if session_id and session_id == Path(session_id).name:
+        path = _chat_dir(notebook) / f"{session_id}.json"
+        if path.exists():
+            path.unlink()
+    # If we deleted the current session, clear the tracking
+    if current_sessions.get(notebook) == session_id:
+        current_sessions.pop(notebook, None)
+    return redirect(url_for("ask", notebook=notebook))
 
 
 @app.route("/<notebook>/ask/clear", methods=["POST"])
 def ask_clear(notebook: str):
+    """Clear all entries from the current session (keeps the file)."""
     if notebook not in NOTEBOOKS:
         abort(404)
-    ask_history.pop(notebook, None)
-    return redirect(url_for("ask", notebook=notebook))
+    session_id = request.form.get("session", "")
+    if session_id:
+        sess = _load_session(notebook, session_id)
+        if sess:
+            sess["entries"] = []
+            _save_session(notebook, sess)
+    return redirect(url_for("ask", notebook=notebook, session=session_id))
 
 
 @app.route("/<notebook>/logs")

@@ -17,10 +17,12 @@ from graphrag.cli.query import (
 
 logger = logging.getLogger(__name__)
 
+_BASE_DIR = Path(__file__).resolve().parent
+
 
 def local_search(query: str, notebook: str, community_level: int = 2) -> tuple[str, Any]:
     """Local search: entity/neighborhood focused. Best for specific entity questions."""
-    root_dir = Path("grag") / notebook
+    root_dir = _BASE_DIR / "grag" / notebook
     return run_local_search(
         data_dir=None,          # uses output_storage.base_dir from settings.yaml
         root_dir=root_dir,
@@ -34,7 +36,7 @@ def local_search(query: str, notebook: str, community_level: int = 2) -> tuple[s
 
 def global_search(query: str, notebook: str, community_level: int = 2) -> tuple[str, Any]:
     """Global search: community/summary focused. Best for broad thematic questions."""
-    root_dir = Path("grag") / notebook
+    root_dir = _BASE_DIR / "grag" / notebook
     return run_global_search(
         data_dir=None,
         root_dir=root_dir,
@@ -49,7 +51,7 @@ def global_search(query: str, notebook: str, community_level: int = 2) -> tuple[
 
 def drift_search(query: str, notebook: str, community_level: int = 2) -> tuple[str, Any]:
     """DRIFT search: dynamic reasoning with follow-up. Combines local + global depth."""
-    root_dir = Path("grag") / notebook
+    root_dir = _BASE_DIR / "grag" / notebook
     return run_drift_search(
         data_dir=None,
         root_dir=root_dir,
@@ -63,7 +65,7 @@ def drift_search(query: str, notebook: str, community_level: int = 2) -> tuple[s
 
 def basic_search(query: str, notebook: str) -> tuple[str, Any]:
     """Basic search: simple text-unit vector search, no graph reasoning."""
-    root_dir = Path("grag") / notebook
+    root_dir = _BASE_DIR / "grag" / notebook
     return run_basic_search(
         data_dir=None,
         root_dir=root_dir,

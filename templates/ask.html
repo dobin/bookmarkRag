@@ -4,11 +4,25 @@
 
 {% block head %}
 <style>
-  /* Chat window fills viewport minus navbar + form */
+  /* Chat window fills viewport minus navbar + session bar + form */
   #chat-history {
-    height: calc(100vh - 56px - 160px);
+    height: calc(100vh - 56px - 42px - 160px);
     overflow-y: auto;
     padding: 1rem 0;
+  }
+
+  /* Session bar above chat */
+  #session-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0;
+    border-bottom: 1px solid #dee2e6;
+    font-size: 0.85rem;
+    height: 42px;
+  }
+  #session-bar .session-select {
+    max-width: 360px;
   }
 
   /* User bubble (right-aligned) */
@@ -92,6 +106,32 @@
 {% endblock %}
 
 {% block content %}
+{# Session selector bar #}
+<div id="session-bar">
+  <form method="POST" action="{{ url_for('ask_new', notebook=current_notebook) }}" class="d-inline">
+    <button type="submit" class="btn btn-outline-primary btn-sm">+ New Chat</button>
+  </form>
+
+  <select class="form-select form-select-sm session-select"
+          id="session-select"
+          data-base-url="{{ url_for('ask', notebook=current_notebook) }}">
+    {% for s in sessions %}
+      <option value="{{ s.id }}" {% if s.id == current_session_id %}selected{% endif %}>
+        {{ s.created[:16] | replace('T', ' ') }} — {{ s.preview }} ({{ s.count }})
+      </option>
+    {% endfor %}
+  </select>
+
+  <form method="POST" action="{{ url_for('ask_delete', notebook=current_notebook) }}" class="d-inline">
+    <input type="hidden" name="session" value="{{ current_session_id }}">
+    <button type="submit" class="btn btn-outline-danger btn-sm"
+            onclick="return confirm('Delete this chat session?');"
+            {% if sessions | length <= 1 %}disabled title="Cannot delete the only session"{% endif %}>
+      🗑
+    </button>
+  </form>
+</div>
+
 <div id="chat-history">
   {% if not history %}
     <p class="text-muted text-center mt-4" id="empty-msg">
@@ -159,6 +199,7 @@
 
     {# Ask input #}
     <form method="POST" action="{{ url_for('ask', notebook=current_notebook) }}" id="ask-form">
+      <input type="hidden" name="session" value="{{ current_session_id }}">
       <div class="mb-2">
         <textarea class="form-control" name="query" id="query-input"
                   rows="2" placeholder="Ask a question…"
@@ -203,10 +244,11 @@
       </div>
     </form>
 
-    {# Clear history — separate form so it doesn't interfere #}
+    {# Clear session entries — separate form so it doesn't interfere #}
     <form method="POST" action="{{ url_for('ask_clear', notebook=current_notebook) }}" class="d-inline ms-1">
+      <input type="hidden" name="session" value="{{ current_session_id }}">
       <button type="submit" class="btn btn-outline-secondary btn-sm mt-1"
-              onclick="return confirm('Clear all history?')">
+              onclick="return confirm('Clear all messages in this session?')">
         Clear history
       </button>
     </form>
@@ -249,6 +291,13 @@
   }
 
   document.getElementById('ask-form').addEventListener('submit', activateSpinner);
+
+  // Session selector navigation
+  document.getElementById('session-select').addEventListener('change', function() {
+    if (this.value) {
+      window.location = this.dataset.baseUrl + '?session=' + this.value;
+    }
+  });
 
   // Allow Ctrl+Enter / Cmd+Enter to submit
   document.getElementById('query-input').addEventListener('keydown', function(e) {
