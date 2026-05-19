@@ -203,9 +203,7 @@ def logout():
 
 @app.route("/")
 def index():
-    if NOTEBOOKS:
-        return redirect(url_for("ask", notebook=NOTEBOOKS[0]))
-    return "No notebooks found.", 404
+    return render_template("index.html", notebooks=NOTEBOOKS)
 
 
 @app.route("/<notebook>/ask", methods=["GET"])
@@ -330,7 +328,9 @@ def _load_bookmarks(notebook: str) -> list[dict]:
     bfile = _bookmarks_file(notebook)
     input_dir = _input_dir(notebook)
     summaries_dir = _summaries_dir(notebook)
+
     if not bfile.exists():
+        print(f"No bookmarks file found for notebook '{notebook}' at {bfile}")  # Debug log
         return []
     entries = []
     seen = set()

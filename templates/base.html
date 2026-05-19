@@ -41,6 +41,7 @@
       <span class="navbar-toggler-icon"></span>
     </button>
     <div class="collapse navbar-collapse" id="navmenu">
+      {% if current_notebook %}
       <ul class="navbar-nav me-auto">
         <li class="nav-item">
           <a class="nav-link {% if request.endpoint == 'ask' %}active{% endif %}"
@@ -59,6 +60,7 @@
              href="{{ url_for('logs', notebook=current_notebook) }}">Logs</a>
         </li>
       </ul>
+      {% endif %}
 
       {# Notebook selector - visible in collapsed mobile menu #}
       <ul class="navbar-nav d-lg-none">

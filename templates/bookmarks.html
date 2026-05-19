@@ -19,6 +19,7 @@
   {% endwith %}
 
   {# Add URL form #}
+  {% if is_authenticated %}
   <div class="card mb-4">
     <div class="card-body">
       <form method="POST" action="{{ url_for('bookmarks_add', notebook=current_notebook) }}" class="d-flex gap-2">
@@ -29,6 +30,7 @@
       </form>
     </div>
   </div>
+  {% endif %}
 
   {# Bookmark list #}
   {% if entries %}
@@ -40,6 +42,7 @@
         {{ entries|rejectattr('scraped')|list|length }} pending
       </span>
       <div class="d-flex gap-2">
+        {% if is_authenticated %}
         <form method="POST" action="{{ url_for('bookmarks_summarize_all', notebook=current_notebook) }}">
           <button type="submit" class="btn btn-outline-info btn-sm"
                   onclick="return confirm('Summarize all scraped bookmarks without a summary?')">
@@ -52,6 +55,7 @@
             Scrape All Pending
           </button>
         </form>
+        {% endif %}
       </div>
     </div>
 
@@ -60,7 +64,9 @@
         <tr>
           <th>URL</th>
           <th style="width:180px;">View</th>
+          {% if is_authenticated %}
           <th style="width:200px;">Actions</th>
+          {% endif %}
         </tr>
       </thead>
       <tbody>
@@ -82,6 +88,7 @@
               </div>
             </td>
             <td>
+              {% if is_authenticated %}
               <div class="d-flex gap-1 flex-wrap">
                 <form method="POST" action="{{ url_for('bookmarks_scrape_one', notebook=current_notebook) }}" class="d-inline">
                   <input type="hidden" name="url" value="{{ entry.url }}">
@@ -98,6 +105,7 @@
                   </form>
                 {% endif %}
               </div>
+              {% endif %}
             </td>
           </tr>
         {% endfor %}
