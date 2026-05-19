@@ -1,0 +1,4 @@
+graphrag
+firecrawl
+openai
+flask
