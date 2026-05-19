@@ -79,6 +79,21 @@
           </ul>
         </li>
       </ul>
+
+      {# Auth links #}
+      <ul class="navbar-nav">
+        {% if is_authenticated %}
+          <li class="nav-item">
+            <form method="post" action="{{ url_for('logout') }}" class="d-inline">
+              <button type="submit" class="btn btn-link nav-link text-light" style="text-decoration:none;">Logout</button>
+            </form>
+          </li>
+        {% else %}
+          <li class="nav-item">
+            <a class="nav-link text-light" href="{{ url_for('login') }}">Login</a>
+          </li>
+        {% endif %}
+      </ul>
     </div>
   </div>
 </nav>

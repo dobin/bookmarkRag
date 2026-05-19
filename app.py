@@ -5,7 +5,7 @@ import re
 from datetime import datetime
 from pathlib import Path
 
-from flask import Flask, abort, flash, redirect, render_template, request, url_for
+from flask import Flask, abort, flash, redirect, render_template, request, session, url_for
 from markupsafe import Markup, escape
 
 from graphrag_api import basic_search, drift_search, global_search, local_search, resolve_sources
@@ -14,6 +14,8 @@ from summarizer import summarize_all, summarize_url
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
+
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin")
 
 ASK_METHODS = ["local", "global", "drift", "basic"]
 NOTEBOOKS = sorted(p.name for p in Path("grag").iterdir() if p.is_dir())
@@ -24,6 +26,38 @@ _BASE_DIR = Path(__file__).resolve().parent
 # Tracks which chat session is active per notebook (in-memory; on restart
 # defaults to the most recent session).
 current_sessions: dict[str, str] = {}
+
+
+def _is_authenticated() -> bool:
+    return session.get("authenticated", False)
+
+
+def login_required(f):
+    """Decorator: redirect to /login if not authenticated."""
+    from functools import wraps
+
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not _is_authenticated():
+            flash("Please log in to access this feature.", "warning")
+            return redirect(url_for("login", next=request.url))
+        return f(*args, **kwargs)
+
+    return decorated
+
+
+def write_required(f):
+    """Decorator: redirect to /login if not authenticated (for bookmark write ops)."""
+    from functools import wraps
+
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not _is_authenticated():
+            flash("Please log in to modify bookmarks.", "warning")
+            return redirect(url_for("login", next=request.url))
+        return f(*args, **kwargs)
+
+    return decorated
 
 
 def _chat_dir(notebook: str) -> Path:
@@ -123,6 +157,7 @@ def inject_notebooks():
     return {
         "notebooks": NOTEBOOKS,
         "current_notebook": notebook,
+        "is_authenticated": _is_authenticated(),
     }
 
 
@@ -145,6 +180,27 @@ def _run_ask(method: str, query: str, community_level: int, notebook: str) -> tu
         return "", str(exc), []
 
 
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        password = request.form.get("password", "")
+        if password == ADMIN_PASSWORD:
+            session["authenticated"] = True
+            next_url = request.args.get("next")
+            if next_url:
+                return redirect(next_url)
+            return redirect(url_for("index"))
+        flash("Incorrect password.", "danger")
+    return render_template("login.html")
+
+
+@app.route("/logout", methods=["POST"])
+def logout():
+    session.pop("authenticated", None)
+    flash("Logged out.", "info")
+    return redirect(url_for("index"))
+
+
 @app.route("/")
 def index():
     if NOTEBOOKS:
@@ -152,40 +208,11 @@ def index():
     return "No notebooks found.", 404
 
 
-@app.route("/<notebook>/ask", methods=["GET", "POST"])
+@app.route("/<notebook>/ask", methods=["GET"])
 def ask(notebook: str):
     if notebook not in NOTEBOOKS:
         abort(404)
 
-    if request.method == "POST":
-        query = request.form.get("query", "").strip()
-        method = request.form.get("method", "local")
-        community_level = int(request.form.get("community_level", 2))
-        session_id = request.form.get("session", "")
-
-        if method not in ASK_METHODS:
-            method = "local"
-        community_level = max(0, min(4, community_level))
-
-        sess = _get_or_create_session(notebook, session_id or None)
-
-        if query:
-            response, error, sources = _run_ask(method, query, community_level, notebook)
-            sess["entries"].append({
-                "query": query,
-                "method": method,
-                "community_level": community_level,
-                "notebook": notebook,
-                "response": response,
-                "error": error,
-                "sources": sources,
-                "timestamp": datetime.now().strftime("%H:%M:%S"),
-            })
-            _save_session(notebook, sess)
-
-        return redirect(url_for("ask", notebook=notebook, session=sess["id"]))
-
-    # GET — load requested or current session
     requested = request.args.get("session", "")
     sess = _get_or_create_session(notebook, requested or None)
     hist = sess.get("entries", [])
@@ -205,7 +232,42 @@ def ask(notebook: str):
     )
 
 
+@app.route("/<notebook>/ask", methods=["POST"])
+@login_required
+def ask_post(notebook: str):
+    if notebook not in NOTEBOOKS:
+        abort(404)
+
+    query = request.form.get("query", "").strip()
+    method = request.form.get("method", "local")
+    community_level = int(request.form.get("community_level", 2))
+    session_id = request.form.get("session", "")
+
+    if method not in ASK_METHODS:
+        method = "local"
+    community_level = max(0, min(4, community_level))
+
+    sess = _get_or_create_session(notebook, session_id or None)
+
+    if query:
+        response, error, sources = _run_ask(method, query, community_level, notebook)
+        sess["entries"].append({
+            "query": query,
+            "method": method,
+            "community_level": community_level,
+            "notebook": notebook,
+            "response": response,
+            "error": error,
+            "sources": sources,
+            "timestamp": datetime.now().strftime("%H:%M:%S"),
+        })
+        _save_session(notebook, sess)
+
+    return redirect(url_for("ask", notebook=notebook, session=sess["id"]))
+
+
 @app.route("/<notebook>/ask/new", methods=["POST"])
+@login_required
 def ask_new(notebook: str):
     """Create a new chat session."""
     if notebook not in NOTEBOOKS:
@@ -217,6 +279,7 @@ def ask_new(notebook: str):
 
 
 @app.route("/<notebook>/ask/delete", methods=["POST"])
+@login_required
 def ask_delete(notebook: str):
     """Delete a specific chat session file."""
     if notebook not in NOTEBOOKS:
@@ -233,6 +296,7 @@ def ask_delete(notebook: str):
 
 
 @app.route("/<notebook>/logs")
+@login_required
 def logs(notebook: str):
     if notebook not in NOTEBOOKS:
         abort(404)
@@ -292,6 +356,7 @@ def bookmarks(notebook: str):
 
 
 @app.route("/<notebook>/bookmarks/add", methods=["POST"])
+@write_required
 def bookmarks_add(notebook: str):
     if notebook not in NOTEBOOKS:
         abort(404)
@@ -335,6 +400,7 @@ def bookmarks_add(notebook: str):
 
 
 @app.route("/<notebook>/bookmarks/scrape", methods=["POST"])
+@write_required
 def bookmarks_scrape_one(notebook: str):
     """Re-scrape a single URL (force overwrite)."""
     if notebook not in NOTEBOOKS:
@@ -356,6 +422,7 @@ def bookmarks_scrape_one(notebook: str):
 
 
 @app.route("/<notebook>/bookmarks/scrape_all", methods=["POST"])
+@write_required
 def bookmarks_scrape_all(notebook: str):
     """Scrape all URLs that do not yet have a .md file."""
     if notebook not in NOTEBOOKS:
@@ -451,6 +518,7 @@ def bookmarks_view_summary(notebook: str):
 
 
 @app.route("/<notebook>/bookmarks/summarize", methods=["POST"])
+@write_required
 def bookmarks_summarize_one(notebook: str):
     """Summarize (or re-summarize) a single URL."""
     if notebook not in NOTEBOOKS:
@@ -471,6 +539,7 @@ def bookmarks_summarize_one(notebook: str):
 
 
 @app.route("/<notebook>/bookmarks/summarize_all", methods=["POST"])
+@write_required
 def bookmarks_summarize_all(notebook: str):
     """Summarize all scraped .md files that do not yet have a .llm summary."""
     if notebook not in NOTEBOOKS:
