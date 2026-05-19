@@ -45,11 +45,33 @@ To update:
 grag/mynotebook$ graphrag index
 ```
 
+If input is `.md` files, edit `settings.yaml`:
+```
+input:
+  type: text # [csv, text, json, jsonl]
+  file_pattern: ".*\\.md$$"
+```
+
+
+## Start
+
+```
+$ python app.py
+```
+
+Browse to http://localhost:5000
+
+
 ## Cost
 
 Using `grag/maldev/`, with 11MB of `input/` data:
-* Indexing cost 130$ (`text-embedding-3-small`)
-* One query cost around 5$ (`gpt-5.4-mini`, 5M input tokens, 200K output tokens)
+* Using `gpt-5.4-mini` and `text-embedding-3-small`
+* Indexing cost 130$
+* One query cost around 5$
+
+Using `grag/maldev/`, with 3MB of `input/` data:
+* Using `gpt-5-mini` (input 0.25$, output 2$) and `text-embedding-3-small`:
+* indexing 100 documents (3MB): 16$
 
 
 ## Update Dependencies
