@@ -34,6 +34,12 @@
       background: #0d6efd;
     }
 
+    .database-status {
+      margin-top: 1.5rem;
+      padding-top: 1rem;
+      border-top: 1px solid #dee2e6;
+    }
+
     .main-content {
       flex: 1 1 auto;
       min-width: 0;
@@ -149,6 +155,32 @@
       <a class="nav-link {% if request.endpoint == 'logs' %}active{% endif %}"
          href="{{ url_for('logs', notebook=current_notebook) }}">Logs</a>
     </nav>
+
+    {% if graphrag_status %}
+    <section class="database-status" aria-label="GraphRAG database status">
+      <div class="small text-uppercase text-muted fw-semibold mb-2">GraphRAG database</div>
+      {% if graphrag_status.ready %}
+        <div class="d-flex align-items-center gap-2 small text-success fw-semibold">
+          <span class="badge rounded-pill text-bg-success">Ready</span>
+          <span>Searchable</span>
+        </div>
+        {% if graphrag_status.documents is not none %}
+          <div class="small text-muted mt-2">{{ graphrag_status.documents }} indexed document{{ '' if graphrag_status.documents == 1 else 's' }}</div>
+        {% endif %}
+        {% if graphrag_status.updated %}
+          <div class="small text-muted mt-1">Updated {{ graphrag_status.updated }}</div>
+        {% endif %}
+      {% else %}
+        <div class="d-flex align-items-center gap-2 small text-danger fw-semibold">
+          <span class="badge rounded-pill text-bg-danger">Unavailable</span>
+          <span>Index incomplete</span>
+        </div>
+        <div class="small text-muted mt-2">
+          Missing: {{ graphrag_status.missing|join(', ') }}
+        </div>
+      {% endif %}
+    </section>
+    {% endif %}
   </aside>
   {% endif %}
 
