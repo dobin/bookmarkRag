@@ -9,6 +9,40 @@
         crossorigin="anonymous">
   <style>
     body { padding-top: 56px; }
+
+    .app-shell {
+      display: flex;
+      min-height: calc(100vh - 56px);
+    }
+
+    .sidebar {
+      flex: 0 0 14rem;
+      padding: 1.25rem 0.75rem;
+      background: #f8f9fa;
+      border-right: 1px solid #dee2e6;
+    }
+
+    .sidebar .nav-link {
+      color: #343a40;
+      border-radius: 0.375rem;
+      margin-bottom: 0.2rem;
+    }
+
+    .sidebar .nav-link:hover,
+    .sidebar .nav-link.active {
+      color: #fff;
+      background: #0d6efd;
+    }
+
+    .main-content {
+      flex: 1 1 auto;
+      min-width: 0;
+      padding: 0 1.5rem;
+    }
+
+    @media (max-width: 991.98px) {
+      .main-content { padding: 0 1rem; }
+    }
   </style>
   {% block head %}{% endblock %}
 </head>
@@ -41,14 +75,15 @@
       <span class="navbar-toggler-icon"></span>
     </button>
     <div class="collapse navbar-collapse" id="navmenu">
+      {# Page links appear here only when the compact mobile menu is open. #}
       {% if current_notebook %}
-      <ul class="navbar-nav me-auto">
+      <ul class="navbar-nav me-auto d-lg-none">
         <li class="nav-item">
           <a class="nav-link {% if request.endpoint == 'ask' %}active{% endif %}"
              href="{{ url_for('ask', notebook=current_notebook) }}">Query</a>
         </li>
         <li class="nav-item">
-          <a class="nav-link {% if request.endpoint in ('bookmarks', 'bookmarks_add', 'bookmarks_scrape_one', 'bookmarks_scrape_all', 'bookmarks_view') %}active{% endif %}"
+          <a class="nav-link {% if request.endpoint in ('bookmarks', 'bookmarks_add', 'bookmarks_scrape_one', 'bookmarks_scrape_all', 'bookmarks_view', 'bookmarks_view_summary', 'bookmarks_summarize_one', 'bookmarks_summarize_all') %}active{% endif %}"
              href="{{ url_for('bookmarks', notebook=current_notebook) }}">Bookmarks</a>
         </li>
         <li class="nav-item">
@@ -100,8 +135,26 @@
   </div>
 </nav>
 
-<div class="container-fluid px-4">
-  {% block content %}{% endblock %}
+<div class="app-shell">
+  {% if current_notebook %}
+  <aside class="sidebar d-none d-lg-block">
+    <div class="small text-uppercase text-muted fw-semibold mb-2">{{ current_notebook }}</div>
+    <nav class="nav nav-pills flex-column" aria-label="Notebook navigation">
+      <a class="nav-link {% if request.endpoint == 'ask' %}active{% endif %}"
+         href="{{ url_for('ask', notebook=current_notebook) }}">Query</a>
+      <a class="nav-link {% if request.endpoint in ('bookmarks', 'bookmarks_add', 'bookmarks_scrape_one', 'bookmarks_scrape_all', 'bookmarks_view', 'bookmarks_view_summary', 'bookmarks_summarize_one', 'bookmarks_summarize_all') %}active{% endif %}"
+         href="{{ url_for('bookmarks', notebook=current_notebook) }}">Bookmarks</a>
+      <a class="nav-link {% if request.endpoint == 'search' %}active{% endif %}"
+         href="{{ url_for('search', notebook=current_notebook) }}">Search</a>
+      <a class="nav-link {% if request.endpoint == 'logs' %}active{% endif %}"
+         href="{{ url_for('logs', notebook=current_notebook) }}">Logs</a>
+    </nav>
+  </aside>
+  {% endif %}
+
+  <main class="main-content">
+    {% block content %}{% endblock %}
+  </main>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
