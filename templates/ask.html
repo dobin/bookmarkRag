@@ -163,6 +163,11 @@
         {% else %}
           <div class="md-content" data-raw="{{ entry.response | e }}"></div>
         {% endif %}
+        {% if entry.metadata and entry.metadata.elapsed_seconds is defined %}
+          <div class="text-muted mt-2" style="font-size:0.75rem;">
+            Query time: {{ '%.2f' | format(entry.metadata.elapsed_seconds) }}s
+          </div>
+        {% endif %}
       </div>
     </div>
 

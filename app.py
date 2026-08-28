@@ -2,6 +2,7 @@ import glob
 import json
 import os
 import re
+import time
 from datetime import datetime
 from pathlib import Path
 
@@ -200,8 +201,11 @@ def inject_notebooks():
     }
 
 
-def _run_ask(method: str, query: str, community_level: int, notebook: str) -> tuple[str, str | None, list[str]]:
-    """Dispatch to the correct ask function. Returns (response, error, sources)."""
+def _run_ask(
+    method: str, query: str, community_level: int, notebook: str
+) -> tuple[str, str | None, list[str], dict[str, float]]:
+    """Dispatch an ask request and return its response, sources, and timing."""
+    started_at = time.perf_counter()
     try:
         if method == "local":
             response, context_data = local_search(query, notebook=notebook, community_level=community_level)
@@ -212,11 +216,11 @@ def _run_ask(method: str, query: str, community_level: int, notebook: str) -> tu
         elif method == "basic":
             response, context_data = basic_search(query, notebook=notebook)
         else:
-            return "", f"Unknown ask method: {method}", []
+            return "", f"Unknown ask method: {method}", [], {}
         sources = resolve_sources(context_data, notebook) if context_data else []
-        return response, None, sources
+        return response, None, sources, {"elapsed_seconds": time.perf_counter() - started_at}
     except Exception as exc:
-        return "", str(exc), []
+        return "", str(exc), [], {"elapsed_seconds": time.perf_counter() - started_at}
 
 
 @app.route("/login", methods=["GET", "POST"])
@@ -287,7 +291,7 @@ def ask_post(notebook: str):
     sess = _get_or_create_session(notebook, session_id or None)
 
     if query:
-        response, error, sources = _run_ask(method, query, community_level, notebook)
+        response, error, sources, metadata = _run_ask(method, query, community_level, notebook)
         sess["entries"].append({
             "query": query,
             "method": method,
@@ -296,6 +300,7 @@ def ask_post(notebook: str):
             "response": response,
             "error": error,
             "sources": sources,
+            "metadata": metadata,
             "timestamp": datetime.now().strftime("%H:%M:%S"),
         })
         _save_session(notebook, sess)
