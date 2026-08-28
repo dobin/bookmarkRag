@@ -1,5 +1,13 @@
 {% extends "base.html" %}
 {% block title %}Search – {{ current_notebook }}{% endblock %}
+{% block head %}
+<style>
+  .search-results td { vertical-align: middle; }
+  .search-result-file { min-width: 15rem; max-width: 24rem; }
+  .search-result-match { min-width: 24rem; }
+  .search-result-actions { min-width: 13rem; }
+</style>
+{% endblock %}
 {% block content %}
 <h4 class="my-3">Search Files – <span class="text-muted">{{ current_notebook }}</span></h4>
 
@@ -32,35 +40,46 @@
 {% if searched %}
   {% if results %}
     <p class="text-muted">
-      Found matches in <strong>{{ results|length }}</strong> file{{ 's' if results|length != 1 }}
-      ({{ results|sum(attribute='matches')|length if false else results|map(attribute='matches')|map('length')|sum }} matching line{{ 's' if results|map(attribute='matches')|map('length')|sum != 1 }})
+      Found matches in <strong>{{ result_file_count }}</strong> file{{ 's' if result_file_count != 1 }}
+      ({{ results|length }} matching line{{ 's' if results|length != 1 }})
     </p>
-    <div class="accordion" id="searchResults">
-      {% for file in results %}
-        <div class="accordion-item">
-          <h2 class="accordion-header">
-            <button class="accordion-button {{ '' if loop.first else 'collapsed' }}" type="button"
-                    data-bs-toggle="collapse" data-bs-target="#file{{ loop.index }}">
-              <span class="font-monospace">{{ file.filename }}</span>
-              <span class="badge bg-secondary ms-2">{{ file.matches|length }} match{{ 'es' if file.matches|length != 1 }}</span>
-            </button>
-          </h2>
-          <div id="file{{ loop.index }}" class="accordion-collapse collapse {{ 'show' if loop.first }}">
-            <div class="accordion-body p-0">
-              <table class="table table-sm table-hover mb-0 font-monospace" style="font-size: .85rem;">
-                <tbody>
-                  {% for m in file.matches %}
-                    <tr>
-                      <td class="text-end text-muted pe-2" style="width: 4rem; user-select: none;">{{ m.lineno }}</td>
-                      <td style="white-space: pre-wrap; word-break: break-word;">{{ m.text }}</td>
-                    </tr>
-                  {% endfor %}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      {% endfor %}
+    <div class="table-responsive">
+      <table class="table table-sm table-hover search-results" style="font-size: .85rem;">
+        <thead class="table-light">
+          <tr>
+            <th scope="col">File</th>
+            <th scope="col" class="text-end">Line</th>
+            <th scope="col">Matching text</th>
+            <th scope="col">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for result in results %}
+            <tr>
+              <td class="search-result-file font-monospace text-break">{{ result.filename }}</td>
+              <td class="text-end text-muted" style="user-select: none;">{{ result.lineno }}</td>
+              <td class="search-result-match font-monospace" style="white-space: pre-wrap; word-break: break-word;">{{ result.text }}</td>
+              <td class="search-result-actions">
+                <div class="d-flex flex-wrap gap-1">
+                  {% if result.content_exists %}
+                    <a href="{{ result.view_url }}" class="btn btn-outline-primary btn-sm">View</a>
+                  {% endif %}
+                  {% if result.summary_exists %}
+                    <a href="{{ result.summary_url }}" class="btn btn-outline-info btn-sm">Summary</a>
+                  {% endif %}
+                  {% if result.bookmark_url %}
+                    <a href="{{ result.bookmark_url }}" class="btn btn-outline-secondary btn-sm"
+                       target="_blank" rel="noopener noreferrer">Open</a>
+                  {% endif %}
+                  {% if not result.content_exists and not result.summary_exists and not result.bookmark_url %}
+                    <span class="text-muted">Unavailable</span>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
   {% elif query %}
     <div class="alert alert-info">No matches found for <strong>{{ query }}</strong> in {{ 'summaries' if search_in == 'summaries' else 'content' }} files.</div>
