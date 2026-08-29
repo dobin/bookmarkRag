@@ -36,7 +36,7 @@
 					<tbody>
 						{% for notebook in notebook_rows %}
 						<tr>
-							<th scope="row"><a class="text-decoration-none" href="{{ url_for('ask', notebook=notebook.name) }}">{{ notebook.name }}</a></th>
+							<th scope="row"><a class="text-decoration-none" href="{{ url_for('bookmarks', notebook=notebook.name) }}">{{ notebook.name }}</a></th>
 							<td class="text-muted">{{ notebook.description or '—' }}</td>
 							<td class="text-end">{{ notebook.bookmarks }}</td>
 							<td class="text-end">
@@ -49,7 +49,7 @@
 									<span class="badge text-bg-secondary">Not indexed</span>
 								{% endif %}
 							</td>
-							<td class="text-end"><a class="btn btn-sm btn-primary" href="{{ url_for('ask', notebook=notebook.name) }}">Open</a></td>
+							<td class="text-end"><a class="btn btn-sm btn-primary" href="{{ url_for('bookmarks', notebook=notebook.name) }}">Open</a></td>
 						</tr>
 						{% else %}
 						<tr><td colspan="5" class="text-center text-muted py-4">No notebooks found in <code>grag/</code>.</td></tr>
