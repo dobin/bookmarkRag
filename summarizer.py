@@ -3,7 +3,7 @@
 LLM Summarizer for scraped markdown files.
 
 Processes .md files in grag/<notebook>/input/ and generates
-LLM summaries saved as .llm files in grag/<notebook>/summaries/.
+LLM summaries saved as .llm files alongside Markdown in grag/<notebook>/input/.
 """
 
 import os
@@ -101,15 +101,14 @@ def summarize_url(url: str, notebook: str, force: bool = False) -> tuple[bool, s
     Generate an LLM summary for a single URL.
 
     Reads grag/<notebook>/input/<url_to_filename(url)>.md and writes the
-    summary to grag/<notebook>/summaries/<url_to_filename(url)>.llm.
+    summary to grag/<notebook>/input/<url_to_filename(url)>.llm.
 
     Returns (success, error_message). error_message is None on success.
     Skips (returns True, None) if the .llm already exists and force=False.
     """
     base = url_to_filename(url)
     input_path = Path("grag") / notebook / "input" / f"{base}.md"
-    summaries_dir = Path("grag") / notebook / "summaries"
-    llm_path = summaries_dir / f"{base}.llm"
+    llm_path = input_path.with_suffix(".llm")
 
     if llm_path.exists() and not force:
         return True, None  # already summarized
@@ -131,7 +130,6 @@ def summarize_url(url: str, notebook: str, force: bool = False) -> tuple[bool, s
     if summary is None:
         return False, "LLM returned no summary"
 
-    summaries_dir.mkdir(parents=True, exist_ok=True)
     llm_path.write_text(summary, encoding="utf-8")
     return True, None
 
@@ -139,12 +137,11 @@ def summarize_url(url: str, notebook: str, force: bool = False) -> tuple[bool, s
 def summarize_all(notebook: str) -> tuple[int, int, list[str]]:
     """
     Summarize all scraped .md files in grag/<notebook>/input/ that do not yet
-    have a corresponding .llm file in grag/<notebook>/summaries/.
+    have a corresponding co-located .llm summary in grag/<notebook>/input/.
 
     Returns (ok_count, skipped_count, error_messages).
     """
     input_dir = Path("grag") / notebook / "input"
-    summaries_dir = Path("grag") / notebook / "summaries"
 
     if not input_dir.exists():
         return 0, 0, [f"Input directory does not exist: {input_dir}"]
@@ -158,14 +155,12 @@ def summarize_all(notebook: str) -> tuple[int, int, list[str]]:
     except ValueError as exc:
         return 0, 0, [str(exc)]
 
-    summaries_dir.mkdir(parents=True, exist_ok=True)
-
     ok_count = 0
     skipped_count = 0
     errors: list[str] = []
 
     for md_path in md_files:
-        llm_path = summaries_dir / md_path.with_suffix(".llm").name
+        llm_path = md_path.with_suffix(".llm")
         if llm_path.exists():
             skipped_count += 1
             continue

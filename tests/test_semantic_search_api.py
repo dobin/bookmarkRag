@@ -16,12 +16,11 @@ def semantic_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     output_dir = notebook_dir / "output"
     (output_dir / "lancedb").mkdir(parents=True)
     (notebook_dir / "input").mkdir()
-    (notebook_dir / "summaries").mkdir()
-    (tmp_path / "bookmarks").mkdir()
-
     (notebook_dir / "input" / "example.test_page.md").write_text("source", encoding="utf-8")
-    (notebook_dir / "summaries" / "example.test_page.llm").write_text("summary", encoding="utf-8")
-    (tmp_path / "bookmarks" / "alpha.txt").write_text("https://example.test/page\n", encoding="utf-8")
+    (notebook_dir / "input" / "example.test_page.llm").write_text("summary", encoding="utf-8")
+    (notebook_dir / "input" / "example.test_page.json").write_text(
+        '{"url": "https://example.test/page", "title": "Example"}', encoding="utf-8"
+    )
     pd.DataFrame([{
         "id": "text-unit-id", "human_readable_id": 7,
         "document_id": "document-id", "text": "Retrieved source chunk.",
@@ -32,10 +31,11 @@ def semantic_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
     monkeypatch.setattr(bookmark_store, "BASE_DIR", tmp_path)
     monkeypatch.setattr(bookmark_store, "GRAG_DIR", grag_dir)
-    monkeypatch.setattr(bookmark_store, "BOOKMARKS_DIR", tmp_path / "bookmarks")
+    bookmark_store.initialize_catalog()
     monkeypatch.setattr(graphrag_api, "_BASE_DIR", tmp_path)
     monkeypatch.setattr(app, "_BASE_DIR", tmp_path)
     monkeypatch.setattr(app, "NOTEBOOKS", ["alpha"])
+    monkeypatch.setattr(app, "ADMIN_PASSWORD", "test-password")
     app.app.config.update(TESTING=True, SECRET_KEY="test-secret")
     return tmp_path
 

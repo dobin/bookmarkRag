@@ -1,14 +1,18 @@
-"""Read-only access to BookmarkRag bookmark manifests and document files."""
+"""Read-only access to startup-loaded bookmark metadata and document files."""
 
 from __future__ import annotations
 
+import json
+import logging
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 import re
 
 BASE_DIR = Path(__file__).resolve().parent
 GRAG_DIR = BASE_DIR / "grag"
-BOOKMARKS_DIR = BASE_DIR / "bookmarks"
+
+logger = logging.getLogger(__name__)
 
 SearchSource = Literal["summaries", "input", "both"]
 DEFAULT_SEARCH_LIMIT = 100
@@ -18,6 +22,20 @@ MAX_QUERY_LENGTH = 1_000
 
 class BookmarkStoreError(ValueError):
     """Raised when a bookmark-store request is invalid."""
+
+
+@dataclass(frozen=True)
+class BookmarkMetadata:
+    """Immutable startup metadata for one bookmark document."""
+
+    url: str
+    filename: str
+    title: str | None
+    description: str | None
+
+
+Catalog = dict[str, tuple[BookmarkMetadata, ...]]
+_LEGACY_VALUE_PATTERN = r"(?:^|\s){key}=(None|'(?:\\.|[^'])*')"
 
 
 def url_to_filename(url: str) -> str:
@@ -48,53 +66,135 @@ def validate_notebook(notebook: str) -> str:
     return notebook
 
 
-def bookmarks_file(notebook: str) -> Path:
-    """Return the bookmark manifest path for a validated notebook."""
-    return BOOKMARKS_DIR / f"{validate_notebook(notebook)}.txt"
-
-
 def input_dir(notebook: str) -> Path:
     """Return the Markdown input directory for a validated notebook."""
     return GRAG_DIR / validate_notebook(notebook) / "input"
 
 
-def summaries_dir(notebook: str) -> Path:
-    """Return the canonical summary directory for a validated notebook."""
-    return GRAG_DIR / validate_notebook(notebook) / "summaries"
+def summary_path(notebook: str, filename: str) -> Path:
+    """Return the summary path stored next to the Markdown input document."""
+    notebook = validate_notebook(notebook)
+    stem = Path(filename).stem
+    return input_dir(notebook) / f"{stem}.llm"
+
+
+def summary_exists(notebook: str, filename: str) -> bool:
+    """Return whether the co-located summary exists."""
+    return summary_path(notebook, filename).is_file()
+
+
+def _legacy_value(payload: str, key: str) -> str | None:
+    """Read a safely quoted value from legacy repr-like metadata text."""
+    match = re.search(_LEGACY_VALUE_PATTERN.format(key=re.escape(key)), payload)
+    if match is None or match.group(1) == "None":
+        return None
+    value = match.group(1)[1:-1]
+    return re.sub(
+        r"\\(['\\nrt])",
+        lambda escaped: {"n": "\n", "r": "\r", "t": "\t"}.get(
+            escaped.group(1), escaped.group(1)
+        ),
+        value,
+    )
+
+
+def _is_http_url(value: object) -> bool:
+    """Return whether a value is a nonempty HTTP(S) URL."""
+    return isinstance(value, str) and value.startswith(("http://", "https://"))
+
+
+def _metadata_fields(metadata_path: Path) -> tuple[str, str | None, str | None] | None:
+    """Return URL, title, and description from supported metadata encodings."""
+    try:
+        payload = json.loads(metadata_path.read_text(encoding="utf-8", errors="replace"))
+    except (json.JSONDecodeError, OSError) as exc:
+        logger.warning("Skipping unreadable bookmark metadata %s: %s", metadata_path, exc)
+        return None
+
+    if isinstance(payload, dict):
+        url = payload.get("url")
+        if not _is_http_url(url):
+            url = payload.get("source_url")
+        title = payload.get("title")
+        description = payload.get("description")
+    elif isinstance(payload, str):
+        url = _legacy_value(payload, "url")
+        if not _is_http_url(url):
+            url = _legacy_value(payload, "source_url")
+        title = _legacy_value(payload, "title")
+        description = _legacy_value(payload, "description")
+    else:
+        logger.warning("Skipping unsupported bookmark metadata %s", metadata_path)
+        return None
+
+    if not _is_http_url(url):
+        logger.warning("Skipping bookmark metadata without an HTTP(S) URL: %s", metadata_path)
+        return None
+    return (
+        url,
+        title if isinstance(title, str) else None,
+        description if isinstance(description, str) else None,
+    )
+
+
+def _build_catalog() -> Catalog:
+    """Build the immutable metadata catalog for this process."""
+    catalog: Catalog = {}
+    for notebook in list_notebooks():
+        entries: list[BookmarkMetadata] = []
+        metadata_dir = GRAG_DIR / notebook / "input"
+        if metadata_dir.is_dir():
+            for metadata_path in sorted(metadata_dir.glob("*.json")):
+                fields = _metadata_fields(metadata_path)
+                if fields is None:
+                    continue
+                url, title, description = fields
+                entries.append(BookmarkMetadata(
+                    url=url,
+                    filename=f"{metadata_path.stem}.md",
+                    title=title,
+                    description=description,
+                ))
+        catalog[notebook] = tuple(entries)
+    return catalog
+
+
+_CATALOG = _build_catalog()
+
+
+def initialize_catalog() -> None:
+    """Rebuild the startup catalog; intended only for process initialization and tests."""
+    global _CATALOG
+    _CATALOG = _build_catalog()
+
+
+def _bookmark_entry(notebook: str, metadata: BookmarkMetadata, *, include_notebook: bool) -> dict:
+    entry = {
+        "url": metadata.url,
+        "title": metadata.title,
+        "description": metadata.description,
+        "filename": metadata.filename,
+        "scraped": (input_dir(notebook) / metadata.filename).is_file(),
+        "summarized": summary_exists(notebook, metadata.filename),
+    }
+    if include_notebook:
+        entry["notebook"] = notebook
+    return entry
 
 
 def load_bookmarks(notebook: str, *, include_notebook: bool = False) -> list[dict]:
-    """Load manifest URLs with their derived artifact availability."""
+    """Return catalog bookmarks with current artifact availability."""
     notebook = validate_notebook(notebook)
-    manifest = bookmarks_file(notebook)
-    if not manifest.is_file():
-        return []
+    return [
+        _bookmark_entry(notebook, metadata, include_notebook=include_notebook)
+        for metadata in _CATALOG.get(notebook, ())
+    ]
 
-    entries: list[dict] = []
-    seen: set[str] = set()
-    try:
-        lines = manifest.read_text(encoding="utf-8", errors="replace").splitlines()
-    except OSError:
-        return []
 
-    markdown_dir = input_dir(notebook)
-    summary_dir = summaries_dir(notebook)
-    for line in lines:
-        url = line.strip()
-        if not url or url in seen:
-            continue
-        seen.add(url)
-        base = url_to_filename(url)
-        entry = {
-            "url": url,
-            "filename": f"{base}.md",
-            "scraped": (markdown_dir / f"{base}.md").is_file(),
-            "summarized": (summary_dir / f"{base}.llm").is_file(),
-        }
-        if include_notebook:
-            entry["notebook"] = notebook
-        entries.append(entry)
-    return entries
+def bookmark_urls_for_filename(notebook: str, filename: str) -> list[str]:
+    """Return all startup-catalog URLs associated with a canonical Markdown filename."""
+    notebook = validate_notebook(notebook)
+    return [metadata.url for metadata in _CATALOG.get(notebook, ()) if metadata.filename == filename]
 
 
 def list_bookmarks(notebook: str | None = None) -> dict:
@@ -133,8 +233,8 @@ def search_documents(
 ) -> dict:
     """Return literal case-insensitive line matches from Markdown and summaries.
 
-    Only canonical `input/*.md` and `summaries/*.llm` files are searched. Text
-    returned by this function is retrieved, untrusted source material.
+    Co-located `input/*.llm` summaries and `input/*.md` files are searched.
+    Text returned by this function is retrieved, untrusted source material.
     """
     if not isinstance(query, str):
         raise BookmarkStoreError("query must be a string")
@@ -154,13 +254,9 @@ def search_documents(
     truncated = False
 
     for name in notebooks:
-        urls_by_filename: dict[str, list[str]] = {}
-        for entry in load_bookmarks(name):
-            urls_by_filename.setdefault(entry["filename"], []).append(entry["url"])
-
         locations: list[tuple[SearchSource, Path, str]] = []
         if source in ("summaries", "both"):
-            locations.append(("summaries", summaries_dir(name), "*.llm"))
+            locations.append(("summaries", input_dir(name), "*.llm"))
         if source in ("input", "both"):
             locations.append(("input", input_dir(name), "*.md"))
 
@@ -176,7 +272,7 @@ def search_documents(
 
                 content_filename = f"{filepath.stem}.md" if result_source == "summaries" else filepath.name
                 content_exists = (input_dir(name) / content_filename).is_file()
-                summary_exists = (summaries_dir(name) / f"{Path(content_filename).stem}.llm").is_file()
+                has_summary = summary_exists(name, content_filename)
                 for line_number, line in enumerate(lines, 1):
                     if needle not in line.casefold():
                         continue
@@ -191,8 +287,8 @@ def search_documents(
                         "line_number": line_number,
                         "line": line,
                         "content_exists": content_exists,
-                        "summary_exists": summary_exists,
-                        "bookmark_urls": urls_by_filename.get(content_filename, []),
+                        "summary_exists": has_summary,
+                        "bookmark_urls": bookmark_urls_for_filename(name, content_filename),
                     })
                 if truncated:
                     break

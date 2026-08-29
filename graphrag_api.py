@@ -11,9 +11,9 @@ import pandas as pd
 from bookmark_store import (
     MAX_QUERY_LENGTH,
     BookmarkStoreError,
+    bookmark_urls_for_filename,
     input_dir,
-    load_bookmarks,
-    summaries_dir,
+    summary_exists,
     validate_notebook,
 )
 from graphrag.config.embeddings import text_unit_text_embedding
@@ -102,10 +102,6 @@ def semantic_search(
         for row in documents.itertuples(index=False)
         if isinstance(row.title, str)
     }
-    urls_by_filename: dict[str, list[str]] = {}
-    for bookmark in load_bookmarks(notebook):
-        urls_by_filename.setdefault(bookmark["filename"], []).append(bookmark["url"])
-
     try:
         config = load_config(root_dir=root_dir)
         embedding_config = config.get_embedding_model_config(config.embed_text.embedding_model_id)
@@ -144,11 +140,9 @@ def semantic_search(
             "document_id": text_unit["document_id"],
             "filename": filename,
             "text": text_unit["text"],
-            "bookmark_urls": urls_by_filename.get(filename, []) if filename else [],
+            "bookmark_urls": bookmark_urls_for_filename(notebook, filename) if filename else [],
             "content_exists": bool(filename and (input_dir(notebook) / filename).is_file()),
-            "summary_exists": bool(
-                filename and (summaries_dir(notebook) / f"{Path(filename).stem}.llm").is_file()
-            ),
+            "summary_exists": bool(filename and summary_exists(notebook, filename)),
         })
 
     return {

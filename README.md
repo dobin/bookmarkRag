@@ -2,7 +2,7 @@
 
 A knowledge management system.
 
-* Add links
+* Read source metadata
 * Get a LLM summary
 * Download content as markdown
 * Search through the content with RAG
@@ -23,10 +23,9 @@ Required API keys for now:
 
 ## Directories
 
-* `bookmarks/`: <notebook>.txt with links
 * `grag/<notebook>/`: graphrag directory
-  * `input/`: downloaded content as markdown
-  * `summaries/`: The LLM generated summary
+  * `input/*.json`: source metadata used to build the in-memory bookmark catalog at server startup
+  * `input/`: downloaded Markdown, source metadata (`*.json`), and generated summaries (`*.llm`)
 
 ## Setup
 
@@ -36,6 +35,7 @@ Setup an initial document database called `mynotebook`:
 $ mkdir grag/mynotebook
 $ cd grag/mynotebook
 grag/mynotebook$ graphrag init
+grag/mynotebook$ vi `settings.yaml`
 grag/mynotebook$ cp <documents>/* input/
 grag/mynotebook$ graphrag index
 ```
@@ -63,7 +63,7 @@ Browse to http://localhost:5000
 
 ## MCP server
 
-AI agents can read bookmark manifests and search the downloaded knowledge base
+AI agents can read the startup metadata catalog and search the downloaded knowledge base
 through the local, read-only MCP server. It uses `stdio`, so it does not open a
 network port and does not require GraphRAG, Firecrawl, or OpenAI credentials.
 
@@ -73,13 +73,15 @@ with `mcp_server.py`.
 
 The server exposes two tools:
 
-* `list_bookmarks(notebook=None)` lists manifest-backed bookmarks. Without a
+* `list_bookmarks(notebook=None)` lists metadata-catalog-backed bookmarks. The
+  catalog is created once when the server process starts, so metadata files
+  added later require a restart. Without a
   notebook it aggregates every directory under `grag/`; each bookmark result
   identifies its notebook and reports whether its Markdown and summary files
   exist.
 * `search_documents(query, notebook=None, source="both", limit=100)` performs
   a literal, case-insensitive line search. It searches only canonical
-  `input/*.md` files and `summaries/*.llm` files. `source` may be `both`,
+  `input/*.md` files and co-located `input/*.llm` summaries. `source` may be `both`,
   `input`, or `summaries`; an omitted notebook searches all notebooks.
 
 Search results include plain, untrusted retrieved text, its file and line

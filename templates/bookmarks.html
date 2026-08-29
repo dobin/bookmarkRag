@@ -18,20 +18,6 @@
     {% endif %}
   {% endwith %}
 
-  {# Add URL form #}
-  {% if is_authenticated %}
-  <div class="card mb-4">
-    <div class="card-body">
-      <form method="POST" action="{{ url_for('bookmarks_add', notebook=current_notebook) }}" class="d-flex gap-2">
-        <input type="url" class="form-control" name="url"
-               placeholder="https://example.com/article" required
-               style="max-width: 600px;">
-        <button type="submit" class="btn btn-primary">Add</button>
-      </form>
-    </div>
-  </div>
-  {% endif %}
-
   {# Bookmark list #}
   {% if entries %}
     <div class="d-flex justify-content-between align-items-center mb-2">
@@ -73,7 +59,9 @@
         {% for entry in entries %}
           <tr>
             <td style="word-break:break-all; font-size:0.85rem;">
+              {% if entry.title %}<div class="fw-semibold">{{ entry.title }}</div>{% endif %}
               <a href="{{ entry.url }}" target="_blank" rel="noopener noreferrer">{{ entry.url }}</a>
+              {% if entry.description %}<div class="text-muted mt-1">{{ entry.description }}</div>{% endif %}
             </td>
             <td>
               <div class="d-flex gap-1 flex-wrap">
@@ -114,7 +102,8 @@
 
   {% else %}
     <div class="alert alert-info">
-      No bookmarks yet. Add a URL above.
+      No bookmark metadata was found at server startup. Add an <code>input/*.json</code>
+      metadata file and restart the server.
     </div>
   {% endif %}
 </div>
