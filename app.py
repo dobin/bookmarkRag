@@ -568,7 +568,7 @@ def search(notebook: str):
 
     if request.method == "POST":
         query = request.form.get("query", "").strip()
-        search_in = request.form.get("search_in", "summaries")
+        search_in = request.form.get("search_mode", request.form.get("search_in", "summaries"))
         if search_in not in ("summaries", "input"):
             search_in = "summaries"
         searched = True

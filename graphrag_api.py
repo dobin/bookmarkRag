@@ -31,8 +31,8 @@ logger = logging.getLogger(__name__)
 
 _BASE_DIR = Path(__file__).resolve().parent
 
-DEFAULT_SEMANTIC_SEARCH_LIMIT = 10
-MAX_SEMANTIC_SEARCH_LIMIT = 50
+DEFAULT_SEMANTIC_SEARCH_LIMIT = 100
+MAX_SEMANTIC_SEARCH_LIMIT = 2_000
 
 
 class SemanticSearchError(RuntimeError):

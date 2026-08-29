@@ -17,49 +17,42 @@
 {% block content %}
 <h4 class="my-3">Search – <span class="text-muted">{{ current_notebook }}</span></h4>
 
-<ul class="nav nav-tabs mb-4" id="search-tabs" role="tablist">
-  <li class="nav-item" role="presentation">
-    <button class="nav-link active" id="literal-tab" data-bs-toggle="tab" data-bs-target="#literal-search"
-            type="button" role="tab" aria-controls="literal-search" aria-selected="true">
-      File search
-    </button>
-  </li>
-  <li class="nav-item" role="presentation">
-    <button class="nav-link" id="semantic-tab" data-bs-toggle="tab" data-bs-target="#semantic-search"
-            type="button" role="tab" aria-controls="semantic-search" aria-selected="false">
-      Semantic search
-    </button>
-  </li>
-</ul>
-
-<div class="tab-content">
-<div class="tab-pane fade show active" id="literal-search" role="tabpanel" aria-labelledby="literal-tab">
-
-<form method="post" class="row g-2 align-items-end mb-4">
+<form id="search-form" method="post" class="row g-2 align-items-end mb-4"
+      data-semantic-endpoint="{{ url_for('semantic_search_api', notebook=current_notebook) }}">
   <div class="col-md-6">
     <label for="query" class="form-label">Search query</label>
     <input type="text" class="form-control" id="query" name="query"
-           value="{{ query }}" placeholder="Enter search term…" autofocus>
+           value="{{ query }}" placeholder="Enter search term or describe a topic…" autofocus required>
   </div>
   <div class="col-md-3">
-    <label class="form-label">Search in</label>
-    <div>
-      <div class="form-check form-check-inline">
-        <input class="form-check-input" type="radio" name="search_in" id="scope_summaries"
-               value="summaries" {% if search_in == 'summaries' %}checked{% endif %}>
-        <label class="form-check-label" for="scope_summaries">Summaries (.llm)</label>
-      </div>
-      <div class="form-check form-check-inline">
-        <input class="form-check-input" type="radio" name="search_in" id="scope_input"
-               value="input" {% if search_in == 'input' %}checked{% endif %}>
-        <label class="form-check-label" for="scope_input">Content (.md)</label>
-      </div>
-    </div>
+    <label for="search-mode" class="form-label">Search type</label>
+    <select class="form-select" id="search-mode" name="search_mode">
+      <option value="summaries">LLM Summaries (.llm)</option>
+      <option value="input" {% if search_in == 'input' %}selected{% endif %}>Full Content (.md)</option>
+      <option value="semantic">Semantic search</option>
+    </select>
+  </div>
+  <div class="col-md-1 d-none" id="semantic-limit-group">
+    <label for="semantic-limit" class="form-label">Results</label>
+    <select class="form-select" id="semantic-limit">
+      <option value="100" selected>100</option>
+      <option value="500">500</option>
+      <option value="1000">1000</option>
+      <option value="2000">2000</option>
+    </select>
   </div>
   <div class="col-md-2">
-    <button type="submit" class="btn btn-primary w-100">Search</button>
+    <button type="submit" class="btn btn-primary w-100" id="search-submit-btn">
+      <span id="search-btn-label">Search</span>
+      <span id="search-btn-spinner" class="spinner-border spinner-border-sm ms-1 d-none"
+            role="status" aria-hidden="true"></span>
+    </button>
   </div>
 </form>
+
+<p id="semantic-description" class="text-muted d-none">
+  Find related text chunks by meaning. This uses the configured embedding model but does not generate an LLM answer.
+</p>
 
 {% if searched %}
   {% if results %}
@@ -111,58 +104,39 @@
     <div class="alert alert-warning">Please enter a search query.</div>
   {% endif %}
 {% endif %}
-</div>
 
-<div class="tab-pane fade" id="semantic-search" role="tabpanel" aria-labelledby="semantic-tab">
-  <p class="text-muted">
-    Find related text chunks by meaning. This uses the configured embedding model but does not generate an LLM answer.
-  </p>
-  <form id="semantic-search-form" class="row g-2 align-items-end mb-3"
-        data-endpoint="{{ url_for('semantic_search_api', notebook=current_notebook) }}">
-    <div class="col-md-7">
-      <label for="semantic-query" class="form-label">Semantic query</label>
-      <input type="text" class="form-control" id="semantic-query" maxlength="1000"
-             placeholder="Describe a topic or concept…" required>
-    </div>
-    <div class="col-md-2">
-      <label for="semantic-limit" class="form-label">Results</label>
-      <select class="form-select" id="semantic-limit">
-        <option value="5">5</option>
-        <option value="10" selected>10</option>
-        <option value="25">25</option>
-        <option value="50">50</option>
-      </select>
-    </div>
-    <div class="col-md-2">
-      <button type="submit" class="btn btn-primary w-100" id="semantic-submit-btn">
-        <span id="semantic-btn-label">Search</span>
-        <span id="semantic-btn-spinner" class="spinner-border spinner-border-sm ms-1 d-none"
-              role="status" aria-hidden="true"></span>
-      </button>
-    </div>
-  </form>
-
-  <div id="semantic-error" class="alert alert-danger d-none" role="alert"></div>
-  <div id="semantic-status" class="text-muted mb-3 d-none" aria-live="polite"></div>
-  <div id="semantic-results" class="vstack gap-3"></div>
-</div>
-</div>
+<div id="semantic-error" class="alert alert-danger d-none" role="alert"></div>
+<div id="semantic-status" class="text-muted mb-3 d-none" aria-live="polite"></div>
+<div id="semantic-results" class="vstack gap-3"></div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-  const semanticForm = document.getElementById('semantic-search-form');
+  const searchForm = document.getElementById('search-form');
   const semanticResults = document.getElementById('semantic-results');
   const semanticError = document.getElementById('semantic-error');
   const semanticStatus = document.getElementById('semantic-status');
-  const semanticButton = document.getElementById('semantic-submit-btn');
-  const semanticLabel = document.getElementById('semantic-btn-label');
-  const semanticSpinner = document.getElementById('semantic-btn-spinner');
+  const searchButton = document.getElementById('search-submit-btn');
+  const searchLabel = document.getElementById('search-btn-label');
+  const searchSpinner = document.getElementById('search-btn-spinner');
+  const semanticDescription = document.getElementById('semantic-description');
+  const semanticLimitGroup = document.getElementById('semantic-limit-group');
+  const searchMode = document.getElementById('search-mode');
+
+  function isSemanticSearch() {
+    return searchMode.value === 'semantic';
+  }
+
+  function updateSearchType() {
+    const semantic = isSemanticSearch();
+    semanticDescription.classList.toggle('d-none', !semantic);
+    semanticLimitGroup.classList.toggle('d-none', !semantic);
+  }
 
   function setSemanticLoading(loading) {
-    semanticButton.disabled = loading;
-    semanticSpinner.classList.toggle('d-none', !loading);
-    semanticLabel.textContent = loading ? 'Searching…' : 'Search';
+    searchButton.disabled = loading;
+    searchSpinner.classList.toggle('d-none', !loading);
+    searchLabel.textContent = loading ? 'Searching…' : 'Search';
   }
 
   function semanticActionLink(url, label, className) {
@@ -222,18 +196,21 @@
     });
   }
 
-  semanticForm.addEventListener('submit', async (event) => {
+  searchMode.addEventListener('change', updateSearchType);
+
+  searchForm.addEventListener('submit', async (event) => {
+    if (!isSemanticSearch()) return;
     event.preventDefault();
     semanticError.classList.add('d-none');
     semanticStatus.classList.add('d-none');
     semanticResults.replaceChildren();
     setSemanticLoading(true);
     try {
-      const response = await fetch(semanticForm.dataset.endpoint, {
+      const response = await fetch(searchForm.dataset.semanticEndpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
         body: JSON.stringify({
-          query: document.getElementById('semantic-query').value,
+          query: document.getElementById('query').value,
           limit: Number(document.getElementById('semantic-limit').value),
         }),
       });

@@ -85,8 +85,8 @@ def test_semantic_search_returns_raw_matches(semantic_root: Path, monkeypatch: p
 def test_semantic_search_rejects_invalid_input(semantic_root: Path) -> None:
     with pytest.raises(bookmark_store.BookmarkStoreError, match="query must not be empty"):
         graphrag_api.semantic_search("  ", "alpha")
-    with pytest.raises(bookmark_store.BookmarkStoreError, match="limit must be an integer from 1 to 50"):
-        graphrag_api.semantic_search("query", "alpha", limit=51)
+    with pytest.raises(bookmark_store.BookmarkStoreError, match="limit must be an integer from 1 to 2000"):
+        graphrag_api.semantic_search("query", "alpha", limit=2001)
 
 
 def test_semantic_endpoint_validates_authentication_and_input(
