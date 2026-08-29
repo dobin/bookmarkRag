@@ -130,6 +130,34 @@ def test_file_search_endpoint_supports_summary_and_content_sources(semantic_root
     assert response.get_json()["matches"][0]["filename"] == "example.test_page.md"
 
 
+def test_index_loads_configured_notebook_descriptions(
+    semantic_root: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    (semantic_root / "notebook_descriptions.yaml").write_text(
+        'alpha: "A test notebook."\n', encoding="utf-8"
+    )
+    monkeypatch.setattr(app, "NOTEBOOK_DESCRIPTIONS_ENABLED", True)
+
+    response = app.app.test_client().get("/")
+
+    assert response.status_code == 200
+    assert b"A test notebook." in response.data
+
+
+def test_index_hides_descriptions_when_disabled(
+    semantic_root: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    (semantic_root / "notebook_descriptions.yaml").write_text(
+        'alpha: "A test notebook."\n', encoding="utf-8"
+    )
+    monkeypatch.setattr(app, "NOTEBOOK_DESCRIPTIONS_ENABLED", False)
+
+    response = app.app.test_client().get("/")
+
+    assert response.status_code == 200
+    assert b"A test notebook." not in response.data
+
+
 def test_semantic_endpoint_returns_results_and_hides_backend_errors(
     semantic_root: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

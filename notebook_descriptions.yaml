@@ -1,0 +1,11 @@
+# Notebook descriptions shown on the home page. Use one notebook: description entry per line.
+amsi: "Disable & patch AMSI, .net/powershell tooling and obfuscation"
+com: "Windows Component Object Model research"
+crystalstardust: "Crystal Palace & Stardust research. PIC compiling and loading"
+defender: "Microsoft Defender documentation."
+edrdev: "Develop and analyze EDRs. ETW, kernel callbacks, ntdll hooking, syscalls"
+lsass: "Dumping LSASS mostly, maybe other credentials"
+maldev: "Shellcode loader, process injection, syscalls, callstack obfusction, c2"
+redteam: "Initial access, C2, BOF, stuff (no lateral movement)"
+staticanalysis: "Static obfuscation, anti virus, PE, signature detection"
+vulndrivers: "Finding and exploiting vulnerable drivers, ioctl, buffer overflow, BYOVD"

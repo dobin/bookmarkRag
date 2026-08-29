@@ -3,3 +3,4 @@ firecrawl
 openai
 flask
 mcp
+PyYAML

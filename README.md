@@ -20,6 +20,14 @@ Required API keys for now:
 * FIRECRAWL_API_KEY
 * GRAPHRAG_API_KEY (same as OPENAI_API_KEY)
 
+### Notebook descriptions
+
+The home page displays notebook descriptions from `notebook_descriptions.yaml` by
+default. It is a YAML mapping with one `notebook: description` entry per line;
+add, change, or remove entries to customize the displayed descriptions. Set
+`NOTEBOOK_DESCRIPTIONS_ENABLED=false` before starting the application to hide
+all descriptions while keeping the configuration file intact.
+
 
 ## Directories
 
@@ -60,6 +68,19 @@ $ python app.py
 ```
 
 Browse to http://localhost:5000
+
+## REST
+
+# Literal file search: source="summaries", "input", or "both"
+curl -X POST http://localhost:5000/<notebook>/api/file-search \
+  -H 'Content-Type: application/json' \
+  -d '{"query":"Windows exception handling","source":"both","limit":100}'
+
+
+# Semantic vector search (log in first if authentication is enabled)
+curl -X POST http://localhost:5000/<notebook>/api/semantic-search \
+  -H 'Content-Type: application/json' \
+  -d '{"query":"Windows exception handling","limit":10}'
 
 ## MCP server
 

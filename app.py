@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import re
 import time
@@ -30,10 +31,17 @@ from graphrag_api import (
 from scraper import scrape_single_url
 from summarizer import summarize_all, summarize_url
 
+import yaml
+
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
 
+logger = logging.getLogger(__name__)
+
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "")
+NOTEBOOK_DESCRIPTIONS_ENABLED = os.environ.get(
+    "NOTEBOOK_DESCRIPTIONS_ENABLED", "true"
+).casefold() not in {"0", "false", "no", "off"}
 
 # Resolve once at startup so relative paths aren't affected by cwd changes.
 _BASE_DIR = Path(__file__).resolve().parent
@@ -44,6 +52,27 @@ NOTEBOOKS = sorted(p.name for p in (_BASE_DIR / "grag").iterdir() if p.is_dir())
 # Tracks which chat session is active per notebook (in-memory; on restart
 # defaults to the most recent session).
 current_sessions: dict[str, str] = {}
+
+
+def _notebook_descriptions() -> dict[str, str]:
+    """Load optional notebook descriptions from the editable YAML configuration."""
+    path = _BASE_DIR / "notebook_descriptions.yaml"
+    try:
+        data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return {}
+    except (OSError, yaml.YAMLError) as exc:
+        logger.warning("Could not load notebook descriptions from %s: %s", path, exc)
+        return {}
+
+    if not isinstance(data, dict):
+        logger.warning("Notebook descriptions in %s must be a YAML mapping", path)
+        return {}
+    return {
+        name: description.strip()
+        for name, description in data.items()
+        if isinstance(name, str) and isinstance(description, str) and description.strip()
+    }
 
 
 def _graphrag_status(notebook: str) -> dict | None:
@@ -281,6 +310,7 @@ def logout():
 
 @app.route("/")
 def index():
+    descriptions = _notebook_descriptions() if NOTEBOOK_DESCRIPTIONS_ENABLED else {}
     notebook_rows = []
     for notebook in NOTEBOOKS:
         bookmarks = load_bookmarks(notebook)
@@ -291,6 +321,7 @@ def index():
             "scraped": sum(bookmark["scraped"] for bookmark in bookmarks),
             "summarized": sum(bookmark["summarized"] for bookmark in bookmarks),
             "status": status,
+            "description": descriptions.get(notebook),
         })
     return render_template("index.html", notebook_rows=notebook_rows)
 
