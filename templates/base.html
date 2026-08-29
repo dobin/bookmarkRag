@@ -84,6 +84,7 @@
       {# Page links appear here only when the compact mobile menu is open. #}
       {% if current_notebook %}
       <ul class="navbar-nav me-auto d-lg-none">
+        {% if is_authenticated %}
         <li class="nav-item">
           <a class="nav-link {% if request.endpoint == 'ask' %}active{% endif %}"
              href="{{ url_for('ask', notebook=current_notebook) }}">Query</a>
@@ -100,6 +101,7 @@
           <a class="nav-link {% if request.endpoint == 'logs' %}active{% endif %}"
              href="{{ url_for('logs', notebook=current_notebook) }}">Logs</a>
         </li>
+        {% endif %}
       </ul>
       {% endif %}
 
@@ -124,19 +126,21 @@
       </ul>
 
       {# Auth links #}
-      <ul class="navbar-nav">
-        {% if is_authenticated %}
+      {% if authentication_enabled %}
+        <ul class="navbar-nav ms-lg-auto">
+          {% if is_authenticated %}
           <li class="nav-item">
             <form method="post" action="{{ url_for('logout') }}" class="d-inline">
               <button type="submit" class="btn btn-link nav-link text-light" style="text-decoration:none;">Logout</button>
             </form>
           </li>
-        {% else %}
+          {% else %}
           <li class="nav-item">
             <a class="nav-link text-light" href="{{ url_for('login') }}">Login</a>
           </li>
-        {% endif %}
-      </ul>
+          {% endif %}
+        </ul>
+      {% endif %}
     </div>
   </div>
 </nav>
@@ -146,6 +150,7 @@
   <aside class="sidebar d-none d-lg-block">
     <div class="small text-uppercase text-muted fw-semibold mb-2">{{ current_notebook }}</div>
     <nav class="nav nav-pills flex-column" aria-label="Notebook navigation">
+      {% if is_authenticated %}
       <a class="nav-link {% if request.endpoint == 'ask' %}active{% endif %}"
          href="{{ url_for('ask', notebook=current_notebook) }}">Query</a>
       <a class="nav-link {% if request.endpoint in ('bookmarks', 'bookmarks_add', 'bookmarks_scrape_one', 'bookmarks_scrape_all', 'bookmarks_view', 'bookmarks_view_summary', 'bookmarks_summarize_one', 'bookmarks_summarize_all') %}active{% endif %}"
@@ -154,6 +159,7 @@
          href="{{ url_for('search', notebook=current_notebook) }}">Search</a>
       <a class="nav-link {% if request.endpoint == 'logs' %}active{% endif %}"
          href="{{ url_for('logs', notebook=current_notebook) }}">Logs</a>
+      {% endif %}
     </nav>
 
     {% if graphrag_status %}

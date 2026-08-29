@@ -25,7 +25,7 @@ from summarizer import summarize_all, summarize_url
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
 
-ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin")
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "")
 
 # Resolve once at startup so relative paths aren't affected by cwd changes.
 _BASE_DIR = Path(__file__).resolve().parent
@@ -77,7 +77,8 @@ def _graphrag_status(notebook: str) -> dict | None:
 
 
 def _is_authenticated() -> bool:
-    return session.get("authenticated", False)
+    """Return whether this request may access administrative features."""
+    return not ADMIN_PASSWORD or session.get("authenticated", False)
 
 
 def login_required(f):
@@ -222,6 +223,7 @@ def inject_notebooks():
         "notebooks": NOTEBOOKS,
         "current_notebook": notebook,
         "is_authenticated": _is_authenticated(),
+        "authentication_enabled": bool(ADMIN_PASSWORD),
         "graphrag_status": _graphrag_status(notebook),
     }
 
