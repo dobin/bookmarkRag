@@ -13,6 +13,7 @@ from bookmark_store import (
     bookmark_urls_for_filename,
     input_dir,
     load_bookmarks,
+    search_documents,
     summary_exists,
     summary_path,
 )
@@ -280,7 +281,18 @@ def logout():
 
 @app.route("/")
 def index():
-    return render_template("index.html", notebooks=NOTEBOOKS)
+    notebook_rows = []
+    for notebook in NOTEBOOKS:
+        bookmarks = load_bookmarks(notebook)
+        status = _graphrag_status(notebook)
+        notebook_rows.append({
+            "name": notebook,
+            "bookmarks": len(bookmarks),
+            "scraped": sum(bookmark["scraped"] for bookmark in bookmarks),
+            "summarized": sum(bookmark["summarized"] for bookmark in bookmarks),
+            "status": status,
+        })
+    return render_template("index.html", notebook_rows=notebook_rows)
 
 
 @app.route("/<notebook>/ask", methods=["GET"])
@@ -636,6 +648,39 @@ def search(notebook: str):
         searched=searched,
         current_notebook=notebook,
     )
+
+
+@app.route("/<notebook>/api/file-search", methods=["POST"])
+def file_search_api(notebook: str):
+    """Return literal matches from stored summaries and/or Markdown content."""
+    if notebook not in NOTEBOOKS:
+        abort(404)
+    if not request.is_json:
+        return jsonify(error="invalid_request", message="Content-Type must be application/json"), 400
+
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify(error="invalid_request", message="JSON body must be an object"), 400
+
+    try:
+        query = data.get("query")
+        source = data.get("source", "both")
+        limit = data.get("limit", 100)
+        if not isinstance(query, str):
+            raise BookmarkStoreError("query must be a string")
+        if not isinstance(source, str):
+            raise BookmarkStoreError("source must be 'summaries', 'input', or 'both'")
+        if not isinstance(limit, int):
+            raise BookmarkStoreError("limit must be an integer from 1 to 1000")
+        result = search_documents(
+            query,
+            notebook=notebook,
+            source=source,
+            limit=limit,
+        )
+    except BookmarkStoreError as exc:
+        return jsonify(error="invalid_request", message=str(exc)), 400
+    return jsonify(result)
 
 
 @app.route("/<notebook>/api/semantic-search", methods=["POST"])

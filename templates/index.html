@@ -3,5 +3,96 @@
 {% block title %}BookmarkRAG{% endblock %}
 
 {% block content %}
-<h1> BookmarkRag </h1>
+<div class="py-4 py-lg-5">
+	<div class="mb-5">
+		<h1 class="display-6 fw-bold">BookmarkRAG</h1>
+		<p class="lead text-muted mb-0">Browse indexed notebooks and access their bookmark knowledge bases.</p>
+	</div>
+
+	<section class="mb-5" aria-labelledby="notebooks-heading">
+		<div class="d-flex align-items-center justify-content-between mb-3">
+			<h2 id="notebooks-heading" class="h3 mb-0">Notebooks</h2>
+			<span class="badge text-bg-secondary">{{ notebook_rows|length }}</span>
+		</div>
+		<div class="card shadow-sm">
+			<div class="table-responsive">
+				<table class="table table-hover align-middle mb-0">
+					<colgroup>
+						<col style="width: 45%;">
+						<col style="width: 20%;">
+						<col style="width: 25%;">
+						<col style="width: 10%;">
+					</colgroup>
+					<thead class="table-light">
+						<tr>
+							<th scope="col">Notebook</th>
+							<th scope="col" class="text-end">Bookmarks</th>
+							<th scope="col" class="text-end">GraphRAG index</th>
+							<th scope="col"><span class="visually-hidden">Open notebook</span></th>
+						</tr>
+					</thead>
+					<tbody>
+						{% for notebook in notebook_rows %}
+						<tr>
+							<th scope="row"><a class="text-decoration-none" href="{{ url_for('ask', notebook=notebook.name) }}">{{ notebook.name }}</a></th>
+							<td class="text-end">{{ notebook.bookmarks }}</td>
+							<td class="text-end">
+								{% if notebook.status.ready %}
+									{% if notebook.status.documents is not none %}
+										<span class="small text-muted ms-1">{{ notebook.status.documents }} documents</span>
+									{% endif %}
+                                    <span class="badge text-bg-success">Ready</span>
+								{% else %}
+									<span class="badge text-bg-secondary">Not indexed</span>
+								{% endif %}
+							</td>
+							<td class="text-end"><a class="btn btn-sm btn-primary" href="{{ url_for('ask', notebook=notebook.name) }}">Open</a></td>
+						</tr>
+						{% else %}
+						<tr><td colspan="4" class="text-center text-muted py-4">No notebooks found in <code>grag/</code>.</td></tr>
+						{% endfor %}
+					</tbody>
+				</table>
+			</div>
+		</div>
+	</section>
+
+	<div class="row g-4">
+		<section class="col-lg-6" aria-labelledby="rest-heading">
+			<div class="card h-100 shadow-sm">
+				<div class="card-body">
+					<h2 id="rest-heading" class="h4">REST API</h2>
+					<p class="text-muted">All endpoints accept JSON and return JSON. Replace <code>&lt;notebook&gt;</code> with a notebook name from the table.</p>
+					<h3 class="h6 mt-3">File search</h3>
+					<p class="mb-2"><code>POST /&lt;notebook&gt;/api/file-search</code></p>
+					<pre class="bg-body-tertiary border rounded p-3"><code>Content-Type: application/json
+
+{"query": "Windows exception handling", "source": "both", "limit": 100}</code></pre>
+					<p class="small text-muted">Use <code>source: "summaries"</code> for <code>.llm</code> summaries, <code>"input"</code> for full <code>.md</code> content, or <code>"both"</code> (the default). Search is literal and case-insensitive.</p>
+					<h3 class="h6 mt-4">Semantic search</h3>
+					<p class="mb-2"><code>POST /&lt;notebook&gt;/api/semantic-search</code></p>
+					<pre class="bg-body-tertiary border rounded p-3 mb-0"><code>Content-Type: application/json
+
+{"query": "Windows exception handling", "limit": 10}</code></pre>
+					<p class="small text-muted mt-3 mb-0">This endpoint requires login when authentication is enabled. It returns matching vector text units and metadata; it does not generate an answer.</p>
+				</div>
+			</div>
+		</section>
+
+		<section class="col-lg-6" aria-labelledby="mcp-heading">
+			<div class="card h-100 shadow-sm">
+				<div class="card-body">
+					<h2 id="mcp-heading" class="h4">MCP server</h2>
+					<p class="text-muted">Configure the included read-only stdio server in an MCP-capable client.</p>
+					<p class="mb-2">Use <code>.vscode/mcp.json</code>, which starts <code>mcp_server.py</code> with the project virtual environment.</p>
+					<ul class="mb-0">
+						<li><code>list_bookmarks(notebook=None)</code> lists catalog bookmarks.</li>
+						<li><code>search_documents(query, notebook=None, source="both", limit=100)</code> searches stored Markdown and summaries.</li>
+					</ul>
+					<p class="small text-muted mt-3 mb-0">MCP searches are literal, case-insensitive, and do not invoke GraphRAG or an LLM.</p>
+				</div>
+			</div>
+		</section>
+	</div>
+</div>
 {% endblock %}

@@ -112,6 +112,24 @@ def test_semantic_endpoint_validates_authentication_and_input(
     assert response.get_json()["message"] == "query must not be empty"
 
 
+def test_file_search_endpoint_supports_summary_and_content_sources(semantic_root: Path) -> None:
+    client = app.app.test_client()
+
+    response = client.post(
+        "/alpha/api/file-search",
+        json={"query": "summary", "source": "summaries"},
+    )
+    assert response.status_code == 200
+    assert response.get_json()["matches"][0]["filename"] == "example.test_page.llm"
+
+    response = client.post(
+        "/alpha/api/file-search",
+        json={"query": "source", "source": "input"},
+    )
+    assert response.status_code == 200
+    assert response.get_json()["matches"][0]["filename"] == "example.test_page.md"
+
+
 def test_semantic_endpoint_returns_results_and_hides_backend_errors(
     semantic_root: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
