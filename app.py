@@ -1,4 +1,3 @@
-import glob
 import json
 import os
 import re
@@ -9,8 +8,9 @@ from pathlib import Path
 from flask import Flask, abort, flash, redirect, render_template, request, session, url_for
 from markupsafe import Markup, escape
 
+from bookmark_store import bookmarks_file, input_dir, load_bookmarks, summaries_dir
 from graphrag_api import basic_search, drift_search, global_search, local_search, resolve_sources
-from scraper import scrape_single_url, url_to_filename
+from scraper import scrape_single_url
 from summarizer import summarize_all, summarize_url
 
 app = Flask(__name__)
@@ -18,11 +18,11 @@ app.secret_key = os.urandom(24)
 
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin")
 
-ASK_METHODS = ["local", "global", "drift", "basic"]
-NOTEBOOKS = sorted(p.name for p in Path("grag").iterdir() if p.is_dir())
-
 # Resolve once at startup so relative paths aren't affected by cwd changes.
 _BASE_DIR = Path(__file__).resolve().parent
+
+ASK_METHODS = ["local", "global", "drift", "basic"]
+NOTEBOOKS = sorted(p.name for p in (_BASE_DIR / "grag").iterdir() if p.is_dir())
 
 # Tracks which chat session is active per notebook (in-memory; on restart
 # defaults to the most recent session).
@@ -355,47 +355,11 @@ def logs(notebook: str):
     return render_template("logs.html", log_files=log_files, current_notebook=notebook, notebooks=NOTEBOOKS)
 
 
-def _bookmarks_file(notebook: str) -> Path:
-    return Path("bookmarks") / f"{notebook}.txt"
-
-
-def _input_dir(notebook: str) -> Path:
-    return Path("grag") / notebook / "input"
-
-
-def _summaries_dir(notebook: str) -> Path:
-    return Path("grag") / notebook / "summaries"
-
-
-def _load_bookmarks(notebook: str) -> list[dict]:
-    """Return list of {url, filename, scraped, summarized} for the given notebook."""
-    bfile = _bookmarks_file(notebook)
-    input_dir = _input_dir(notebook)
-    summaries_dir = _summaries_dir(notebook)
-
-    if not bfile.exists():
-        print(f"No bookmarks file found for notebook '{notebook}' at {bfile}")  # Debug log
-        return []
-    entries = []
-    seen = set()
-    for line in bfile.read_text(encoding="utf-8").splitlines():
-        url = line.strip()
-        if not url or url in seen:
-            continue
-        seen.add(url)
-        base = url_to_filename(url)
-        filename = base + ".md"
-        scraped = (input_dir / filename).exists()
-        summarized = (summaries_dir / (base + ".llm")).exists()
-        entries.append({"url": url, "filename": filename, "scraped": scraped, "summarized": summarized})
-    return entries
-
-
 @app.route("/<notebook>/bookmarks")
 def bookmarks(notebook: str):
     if notebook not in NOTEBOOKS:
         abort(404)
-    entries = _load_bookmarks(notebook)
+    entries = load_bookmarks(notebook)
     return render_template("bookmarks.html", entries=entries, current_notebook=notebook)
 
 
@@ -410,7 +374,7 @@ def bookmarks_add(notebook: str):
         flash("Invalid URL — must start with http:// or https://", "danger")
         return redirect(url_for("bookmarks", notebook=notebook))
 
-    bfile = _bookmarks_file(notebook)
+    bfile = bookmarks_file(notebook)
     bfile.parent.mkdir(parents=True, exist_ok=True)
 
     # Check for duplicate
@@ -427,7 +391,7 @@ def bookmarks_add(notebook: str):
         f.write(url + "\n")
 
     # Scrape immediately
-    output_dir = _input_dir(notebook)
+    output_dir = input_dir(notebook)
     success, error = scrape_single_url(url, output_dir)
     if success:
         flash(f"Added and scraped: {url}", "success")
@@ -455,7 +419,7 @@ def bookmarks_scrape_one(notebook: str):
         flash("Invalid URL", "danger")
         return redirect(url_for("bookmarks", notebook=notebook))
 
-    output_dir = _input_dir(notebook)
+    output_dir = input_dir(notebook)
     success, error = scrape_single_url(url, output_dir, force=True)
     if success:
         flash(f"Scraped: {url}", "success")
@@ -471,8 +435,8 @@ def bookmarks_scrape_all(notebook: str):
     """Scrape all URLs that do not yet have a .md file."""
     if notebook not in NOTEBOOKS:
         abort(404)
-    entries = _load_bookmarks(notebook)
-    output_dir = _input_dir(notebook)
+    entries = load_bookmarks(notebook)
+    output_dir = input_dir(notebook)
 
     pending = [e for e in entries if not e["scraped"]]
     if not pending:
@@ -508,7 +472,7 @@ def bookmarks_view(notebook: str):
         flash("Invalid filename.", "danger")
         return redirect(url_for("bookmarks", notebook=notebook))
 
-    md_path = _input_dir(notebook) / safe_filename
+    md_path = input_dir(notebook) / safe_filename
     if not md_path.exists():
         flash(f"File not found: {safe_filename}", "warning")
         return redirect(url_for("bookmarks", notebook=notebook))
@@ -541,7 +505,7 @@ def bookmarks_view_summary(notebook: str):
         return redirect(url_for("bookmarks", notebook=notebook))
 
     llm_filename = safe_filename[:-3] + ".llm"
-    llm_path = _summaries_dir(notebook) / llm_filename
+    llm_path = summaries_dir(notebook) / llm_filename
     if not llm_path.exists():
         flash(f"Summary file not found: {llm_filename}", "warning")
         return redirect(url_for("bookmarks", notebook=notebook))
@@ -621,14 +585,14 @@ def search(notebook: str):
 
         if query:
             bookmarks_by_filename: dict[str, list[dict]] = {}
-            for entry in _load_bookmarks(notebook):
+            for entry in load_bookmarks(notebook):
                 bookmarks_by_filename.setdefault(entry["filename"], []).append(entry)
 
             if search_in == "summaries":
-                search_dir = _summaries_dir(notebook)
+                search_dir = summaries_dir(notebook)
                 pattern = "*.llm"
             else:
-                search_dir = _input_dir(notebook)
+                search_dir = input_dir(notebook)
                 pattern = "*.md"
 
             if search_dir.exists():
@@ -645,9 +609,9 @@ def search(notebook: str):
                     )
                     matching_bookmarks = bookmarks_by_filename.get(content_filename, [])
                     bookmark_url = matching_bookmarks[0]["url"] if len(matching_bookmarks) == 1 else None
-                    content_exists = (_input_dir(notebook) / content_filename).is_file()
+                    content_exists = (input_dir(notebook) / content_filename).is_file()
                     summary_exists = (
-                        _summaries_dir(notebook) / f"{Path(content_filename).stem}.llm"
+                        summaries_dir(notebook) / f"{Path(content_filename).stem}.llm"
                     ).is_file()
                     for lineno, line in enumerate(text.splitlines(), 1):
                         if re.search(escaped_query, line, re.IGNORECASE):

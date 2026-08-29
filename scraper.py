@@ -8,28 +8,9 @@ import json
 from pathlib import Path
 from firecrawl import FirecrawlApp
 
-FIRECRAWL_API_KEY = os.environ.get("FIRECRAWL_API_KEY")
+from bookmark_store import url_to_filename
 
-def url_to_filename(url):
-    """
-    Convert a URL to a safe filename (without extension).
-    """
-    # Lowercase
-    filename = url.lower()
-    # Remove protocol
-    filename = re.sub(r'^https?://', '', filename)
-    # Remove www.
-    filename = re.sub(r'^www\.', '', filename)
-    # Replace invalid filename characters with underscores
-    filename = re.sub(r'[^\w\-.]', '_', filename)
-    # Remove multiple consecutive underscores
-    filename = re.sub(r'_+', '_', filename)
-    # Remove leading/trailing underscores
-    filename = filename.strip('_')
-    # Limit length to avoid filesystem issues
-    if len(filename) > 144:
-        filename = filename[:144]
-    return filename
+FIRECRAWL_API_KEY = os.environ.get("FIRECRAWL_API_KEY")
 
 
 def scrape_single_url(url: str, output_dir: Path, force: bool = False) -> tuple[bool, str | None]:

@@ -2,3 +2,4 @@ graphrag
 firecrawl
 openai
 flask
+mcp
