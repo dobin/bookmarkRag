@@ -2,7 +2,7 @@
 amsi: "Disable & patch AMSI, .net/powershell tooling and obfuscation"
 com: "Windows Component Object Model research"
 crystalstardust: "Crystal Palace & Stardust research. PIC compiling and loading"
-defender: "Microsoft Defender documentation."
+defender: "Microsoft Defender documentation & research"
 edrdev: "Develop and analyze EDRs. ETW, kernel callbacks, ntdll hooking, syscalls"
 lsass: "Dumping LSASS mostly, maybe other credentials"
 maldev: "Shellcode loader, process injection, syscalls, callstack obfusction, c2"
