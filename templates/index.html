@@ -16,13 +16,13 @@
 		</div>
 		<div class="card shadow-sm">
 			<div class="table-responsive">
-				<table class="table table-hover align-middle mb-0">
+				<table class="table table-hover align-middle mb-0" style="table-layout: fixed;">
 					<colgroup>
-						<col style="width: 25%;">
-						<col style="width: 30%;">
-						<col style="width: 15%;">
-						<col style="width: 20%;">
-						<col style="width: 10%;">
+						<col style="width: 14%;">
+						<col style="width: 53%;">
+						<col style="width: 9%;">
+						<col style="width: 16%;">
+						<col style="width: 8%;">
 					</colgroup>
 					<thead class="table-light">
 						<tr>
@@ -37,7 +37,7 @@
 						{% for notebook in notebook_rows %}
 						<tr>
 							<th scope="row"><a class="text-decoration-none" href="{{ url_for('bookmarks', notebook=notebook.name) }}">{{ notebook.name }}</a></th>
-							<td class="text-muted">{{ notebook.description or '—' }}</td>
+							<td class="text-muted text-break">{{ notebook.description or '—' }}</td>
 							<td class="text-end">{{ notebook.bookmarks }}</td>
 							<td class="text-end">
 								{% if notebook.status.ready %}
