@@ -6,7 +6,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 
-from flask import Flask, abort, flash, jsonify, redirect, render_template, request, session, url_for
+from flask import Flask, abort, flash, jsonify, redirect, render_template, request, send_file, session, url_for
 from markupsafe import Markup, escape
 
 from bookmark_store import (
@@ -39,6 +39,7 @@ app.secret_key = os.urandom(24)
 logger = logging.getLogger(__name__)
 
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "")
+BOOKMARK_RAG_DOMAIN = os.environ.get("BOOKMARK_RAG_DOMAIN", "").strip().rstrip("/")
 NOTEBOOK_DESCRIPTIONS_ENABLED = os.environ.get(
     "NOTEBOOK_DESCRIPTIONS_ENABLED", "true"
 ).casefold() not in {"0", "false", "no", "off"}
@@ -52,6 +53,45 @@ NOTEBOOKS = sorted(p.name for p in (_BASE_DIR / "grag").iterdir() if p.is_dir())
 # Tracks which chat session is active per notebook (in-memory; on restart
 # defaults to the most recent session).
 current_sessions: dict[str, str] = {}
+
+
+def _artifact_url(notebook: str, filename: str) -> str:
+    """Return the externally usable URL for one read-only input artifact."""
+    path = url_for("document_artifact", notebook=notebook, filename=filename)
+    if not BOOKMARK_RAG_DOMAIN:
+        return url_for("document_artifact", notebook=notebook, filename=filename, _external=True)
+    domain = BOOKMARK_RAG_DOMAIN
+    if "://" not in domain:
+        domain = f"https://{domain}"
+    return f"{domain}{path}"
+
+
+def _add_artifact_urls(notebook: str, result: dict) -> dict:
+    """Add canonical raw-artifact URLs to every literal file-search match."""
+    directory = input_dir(notebook)
+    for match in result["matches"]:
+        content_filename = (
+            f"{Path(match['filename']).stem}.md"
+            if match["source"] == "summaries"
+            else match["filename"]
+        )
+        stem = Path(content_filename).stem
+        metadata_filename = f"{stem}.json"
+        summary_filename = f"{stem}.llm"
+        match["metadata_exists"] = (directory / metadata_filename).is_file()
+        match["metadata_url"] = (
+            _artifact_url(notebook, metadata_filename)
+            if match["metadata_exists"] else None
+        )
+        match["summary_url"] = (
+            _artifact_url(notebook, summary_filename)
+            if match["summary_exists"] else None
+        )
+        match["content_url"] = (
+            _artifact_url(notebook, content_filename)
+            if match["content_exists"] else None
+        )
+    return result
 
 
 def _notebook_descriptions() -> dict[str, str]:
@@ -711,7 +751,27 @@ def file_search_api(notebook: str):
         )
     except BookmarkStoreError as exc:
         return jsonify(error="invalid_request", message=str(exc)), 400
-    return jsonify(result)
+    return jsonify(_add_artifact_urls(notebook, result))
+
+
+@app.route("/<notebook>/api/documents/<filename>", methods=["GET"])
+def document_artifact(notebook: str, filename: str):
+    """Serve one canonical stored input artifact for API consumers."""
+    if notebook not in NOTEBOOKS:
+        abort(404)
+
+    safe_filename = Path(filename).name
+    if (
+        safe_filename != filename
+        or "\\" in filename
+        or Path(safe_filename).suffix not in {".json", ".llm", ".md"}
+    ):
+        abort(404)
+
+    artifact_path = input_dir(notebook) / safe_filename
+    if not artifact_path.is_file():
+        abort(404)
+    return send_file(artifact_path, conditional=True)
 
 
 @app.route("/<notebook>/api/semantic-search", methods=["POST"])

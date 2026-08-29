@@ -120,7 +120,11 @@ def test_file_search_endpoint_supports_summary_and_content_sources(semantic_root
         json={"query": "summary", "source": "summaries"},
     )
     assert response.status_code == 200
-    assert response.get_json()["matches"][0]["filename"] == "example.test_page.llm"
+    summary_match = response.get_json()["matches"][0]
+    assert summary_match["filename"] == "example.test_page.llm"
+    assert summary_match["metadata_url"] == "http://localhost/alpha/api/documents/example.test_page.json"
+    assert summary_match["summary_url"] == "http://localhost/alpha/api/documents/example.test_page.llm"
+    assert summary_match["content_url"] == "http://localhost/alpha/api/documents/example.test_page.md"
 
     response = client.post(
         "/alpha/api/file-search",
@@ -128,6 +132,29 @@ def test_file_search_endpoint_supports_summary_and_content_sources(semantic_root
     )
     assert response.status_code == 200
     assert response.get_json()["matches"][0]["filename"] == "example.test_page.md"
+
+
+def test_file_search_uses_configured_domain_and_artifact_urls(semantic_root: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(app, "BOOKMARK_RAG_DOMAIN", "bookmark-rag.ch")
+    client = app.app.test_client()
+
+    response = client.post("/alpha/api/file-search", json={"query": "source", "source": "input"})
+
+    match = response.get_json()["matches"][0]
+    assert match["metadata_exists"] is True
+    assert match["metadata_url"] == "https://bookmark-rag.ch/alpha/api/documents/example.test_page.json"
+    assert match["summary_url"] == "https://bookmark-rag.ch/alpha/api/documents/example.test_page.llm"
+    assert match["content_url"] == "https://bookmark-rag.ch/alpha/api/documents/example.test_page.md"
+
+    content_response = client.get("/alpha/api/documents/example.test_page.md")
+    assert content_response.status_code == 200
+    assert content_response.get_data(as_text=True) == "source"
+
+    metadata_response = client.get("/alpha/api/documents/example.test_page.json")
+    assert metadata_response.status_code == 200
+    assert metadata_response.get_json()["url"] == "https://example.test/page"
+
+    assert client.get("/alpha/api/documents/../app.py").status_code == 404
 
 
 def test_index_loads_configured_notebook_descriptions(
