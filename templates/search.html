@@ -6,10 +6,34 @@
   .search-result-file { min-width: 15rem; max-width: 24rem; }
   .search-result-match { min-width: 24rem; }
   .search-result-actions { min-width: 13rem; }
+  #semantic-results .semantic-result-text {
+    max-height: 18rem;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
 </style>
 {% endblock %}
 {% block content %}
-<h4 class="my-3">Search Files – <span class="text-muted">{{ current_notebook }}</span></h4>
+<h4 class="my-3">Search – <span class="text-muted">{{ current_notebook }}</span></h4>
+
+<ul class="nav nav-tabs mb-4" id="search-tabs" role="tablist">
+  <li class="nav-item" role="presentation">
+    <button class="nav-link active" id="literal-tab" data-bs-toggle="tab" data-bs-target="#literal-search"
+            type="button" role="tab" aria-controls="literal-search" aria-selected="true">
+      File search
+    </button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" id="semantic-tab" data-bs-toggle="tab" data-bs-target="#semantic-search"
+            type="button" role="tab" aria-controls="semantic-search" aria-selected="false">
+      Semantic search
+    </button>
+  </li>
+</ul>
+
+<div class="tab-content">
+<div class="tab-pane fade show active" id="literal-search" role="tabpanel" aria-labelledby="literal-tab">
 
 <form method="post" class="row g-2 align-items-end mb-4">
   <div class="col-md-6">
@@ -87,4 +111,143 @@
     <div class="alert alert-warning">Please enter a search query.</div>
   {% endif %}
 {% endif %}
+</div>
+
+<div class="tab-pane fade" id="semantic-search" role="tabpanel" aria-labelledby="semantic-tab">
+  <p class="text-muted">
+    Find related text chunks by meaning. This uses the configured embedding model but does not generate an LLM answer.
+  </p>
+  <form id="semantic-search-form" class="row g-2 align-items-end mb-3"
+        data-endpoint="{{ url_for('semantic_search_api', notebook=current_notebook) }}">
+    <div class="col-md-7">
+      <label for="semantic-query" class="form-label">Semantic query</label>
+      <input type="text" class="form-control" id="semantic-query" maxlength="1000"
+             placeholder="Describe a topic or concept…" required>
+    </div>
+    <div class="col-md-2">
+      <label for="semantic-limit" class="form-label">Results</label>
+      <select class="form-select" id="semantic-limit">
+        <option value="5">5</option>
+        <option value="10" selected>10</option>
+        <option value="25">25</option>
+        <option value="50">50</option>
+      </select>
+    </div>
+    <div class="col-md-2">
+      <button type="submit" class="btn btn-primary w-100" id="semantic-submit-btn">
+        <span id="semantic-btn-label">Search</span>
+        <span id="semantic-btn-spinner" class="spinner-border spinner-border-sm ms-1 d-none"
+              role="status" aria-hidden="true"></span>
+      </button>
+    </div>
+  </form>
+
+  <div id="semantic-error" class="alert alert-danger d-none" role="alert"></div>
+  <div id="semantic-status" class="text-muted mb-3 d-none" aria-live="polite"></div>
+  <div id="semantic-results" class="vstack gap-3"></div>
+</div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const semanticForm = document.getElementById('semantic-search-form');
+  const semanticResults = document.getElementById('semantic-results');
+  const semanticError = document.getElementById('semantic-error');
+  const semanticStatus = document.getElementById('semantic-status');
+  const semanticButton = document.getElementById('semantic-submit-btn');
+  const semanticLabel = document.getElementById('semantic-btn-label');
+  const semanticSpinner = document.getElementById('semantic-btn-spinner');
+
+  function setSemanticLoading(loading) {
+    semanticButton.disabled = loading;
+    semanticSpinner.classList.toggle('d-none', !loading);
+    semanticLabel.textContent = loading ? 'Searching…' : 'Search';
+  }
+
+  function semanticActionLink(url, label, className) {
+    const link = document.createElement('a');
+    link.href = url;
+    link.textContent = label;
+    link.className = `btn btn-sm ${className}`;
+    if (label === 'Open') {
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+    }
+    return link;
+  }
+
+  function renderSemanticResults(data) {
+    semanticResults.replaceChildren();
+    semanticStatus.classList.remove('d-none');
+    semanticStatus.textContent = `Found ${data.returned_results} semantic result${data.returned_results === 1 ? '' : 's'}.`;
+    if (data.returned_results === 0) {
+      semanticResults.textContent = 'No semantic matches found.';
+      return;
+    }
+
+    data.results.forEach((result, index) => {
+      const card = document.createElement('article');
+      card.className = 'card';
+      const body = document.createElement('div');
+      body.className = 'card-body';
+      const heading = document.createElement('h5');
+      heading.className = 'card-title h6 font-monospace text-break';
+      heading.textContent = result.filename || `Unknown document (${result.document_id})`;
+      const metadata = document.createElement('p');
+      metadata.className = 'card-subtitle mb-2 text-muted small';
+      metadata.textContent = `Result ${index + 1} · Score ${Number(result.score).toFixed(4)} · Text unit ${result.short_id}`;
+      const excerpt = document.createElement('pre');
+      excerpt.className = 'semantic-result-text bg-light border rounded p-2 mb-3 small';
+      excerpt.textContent = result.text;
+      const actions = document.createElement('div');
+      actions.className = 'd-flex flex-wrap gap-1';
+      if (result.filename && result.content_exists) {
+        actions.append(semanticActionLink(
+          `{{ url_for('bookmarks_view', notebook=current_notebook) }}?filename=${encodeURIComponent(result.filename)}`,
+          'View', 'btn-outline-primary'
+        ));
+      }
+      if (result.filename && result.summary_exists) {
+        actions.append(semanticActionLink(
+          `{{ url_for('bookmarks_view_summary', notebook=current_notebook) }}?filename=${encodeURIComponent(result.filename)}`,
+          'Summary', 'btn-outline-info'
+        ));
+      }
+      result.bookmark_urls.forEach((url) => actions.append(semanticActionLink(url, 'Open', 'btn-outline-secondary')));
+      body.append(heading, metadata, excerpt);
+      if (actions.childElementCount) body.append(actions);
+      card.append(body);
+      semanticResults.append(card);
+    });
+  }
+
+  semanticForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    semanticError.classList.add('d-none');
+    semanticStatus.classList.add('d-none');
+    semanticResults.replaceChildren();
+    setSemanticLoading(true);
+    try {
+      const response = await fetch(semanticForm.dataset.endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({
+          query: document.getElementById('semantic-query').value,
+          limit: Number(document.getElementById('semantic-limit').value),
+        }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.message || data.error || 'Semantic search failed.');
+      }
+      renderSemanticResults(data);
+    } catch (error) {
+      semanticError.textContent = error.message || 'Semantic search failed.';
+      semanticError.classList.remove('d-none');
+    } finally {
+      setSemanticLoading(false);
+    }
+  });
+</script>
 {% endblock %}

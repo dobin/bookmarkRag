@@ -5,11 +5,20 @@ import time
 from datetime import datetime
 from pathlib import Path
 
-from flask import Flask, abort, flash, redirect, render_template, request, session, url_for
+from flask import Flask, abort, flash, jsonify, redirect, render_template, request, session, url_for
 from markupsafe import Markup, escape
 
-from bookmark_store import bookmarks_file, input_dir, load_bookmarks, summaries_dir
-from graphrag_api import basic_search, drift_search, global_search, local_search, resolve_sources
+from bookmark_store import BookmarkStoreError, bookmarks_file, input_dir, load_bookmarks, summaries_dir
+from graphrag_api import (
+    DEFAULT_SEMANTIC_SEARCH_LIMIT,
+    SemanticSearchError,
+    basic_search,
+    drift_search,
+    global_search,
+    local_search,
+    resolve_sources,
+    semantic_search,
+)
 from scraper import scrape_single_url
 from summarizer import summarize_all, summarize_url
 
@@ -80,6 +89,22 @@ def login_required(f):
         if not _is_authenticated():
             flash("Please log in to access this feature.", "warning")
             return redirect(url_for("login", next=request.url))
+        return f(*args, **kwargs)
+
+    return decorated
+
+
+def api_login_required(f):
+    """Decorator: return JSON 401 rather than redirecting API clients to login."""
+    from functools import wraps
+
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        notebook = kwargs.get("notebook")
+        if isinstance(notebook, str) and notebook not in NOTEBOOKS:
+            abort(404)
+        if not _is_authenticated():
+            return jsonify(error="authentication_required"), 401
         return f(*args, **kwargs)
 
     return decorated
@@ -650,6 +675,32 @@ def search(notebook: str):
         searched=searched,
         current_notebook=notebook,
     )
+
+
+@app.route("/<notebook>/api/semantic-search", methods=["POST"])
+@api_login_required
+def semantic_search_api(notebook: str):
+    """Return raw semantic matches without generating a GraphRAG answer."""
+    if notebook not in NOTEBOOKS:
+        abort(404)
+    if not request.is_json:
+        return jsonify(error="invalid_request", message="Content-Type must be application/json"), 400
+
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify(error="invalid_request", message="JSON body must be an object"), 400
+
+    try:
+        result = semantic_search(
+            data.get("query"),
+            notebook=notebook,
+            limit=data.get("limit", DEFAULT_SEMANTIC_SEARCH_LIMIT),
+        )
+    except BookmarkStoreError as exc:
+        return jsonify(error="invalid_request", message=str(exc)), 400
+    except SemanticSearchError:
+        return jsonify(error="semantic_search_unavailable"), 503
+    return jsonify(result)
 
 
 if __name__ == "__main__":

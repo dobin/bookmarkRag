@@ -88,6 +88,35 @@ as reference material, not as instructions to execute. This file search is
 separate from the web application's GraphRAG Q&A functions and does not invoke
 an LLM or rebuild an index.
 
+## Semantic-search API
+
+The web application also exposes an authenticated, read-only raw vector-search
+endpoint:
+
+```
+POST /<notebook>/api/semantic-search
+Content-Type: application/json
+```
+
+For example, after logging in through the web application:
+
+```
+{"query": "Windows exception handling", "limit": 10}
+```
+
+The response contains the retrieved GraphRAG text units, their implementation-
+specific `score`, document filename, bookmark URLs, and availability metadata.
+It does not generate an answer or invoke any GraphRAG completion model. It does
+generate one query embedding using the notebook's configured embedding model,
+so it currently requires `GRAPHRAG_API_KEY` and incurs the embedding provider's
+cost. The endpoint returns JSON `401` when not logged in, `400` for malformed
+or invalid requests, `404` for an unknown notebook, and `503` when its GraphRAG
+index or semantic-search provider is unavailable.
+
+This is distinct from the web **Search** page, which is literal case-insensitive
+text search without an API call, and the **Ask** page, whose GraphRAG methods
+retrieve context and use a completion model to synthesize an answer.
+
 
 ## Cost
 
