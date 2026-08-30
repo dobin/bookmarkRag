@@ -53,7 +53,7 @@ def test_catalog_recognizes_co_located_summary(store_root: Path) -> None:
     assert bookmark_store.summary_path("alpha", "page.md") == input_dir / "page.llm"
     result = bookmark_store.search_documents("needle", notebook="alpha", source="summaries")
     assert result["matches"][0]["filename"] == "page.llm"
-    assert result["matches"][0]["summary_exists"] is True
+    assert "summary_exists" not in result["matches"][0]
 
 
 def test_catalog_supports_json_objects_duplicates_and_snapshot_behavior(store_root: Path) -> None:

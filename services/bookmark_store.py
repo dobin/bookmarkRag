@@ -18,6 +18,14 @@ SearchSource = Literal["summaries", "input", "both"]
 DEFAULT_SEARCH_LIMIT = 100
 MAX_SEARCH_LIMIT = 1_000
 MAX_QUERY_LENGTH = 1_000
+DEFAULT_PAGE_DOCUMENTS = 50
+MAX_PAGE_DOCUMENTS = 100
+DEFAULT_MATCHES_PER_DOCUMENT = 3
+MAX_MATCHES_PER_DOCUMENT = 20
+MAX_DOCUMENT_BATCH = 20
+MAX_RETRIEVAL_BYTES = 200_000
+
+ArtifactKind = Literal["summary", "content", "metadata"]
 
 
 class BookmarkStoreError(ValueError):
@@ -83,6 +91,15 @@ def summary_exists(notebook: str, filename: str) -> bool:
     return summary_path(notebook, filename).is_file()
 
 
+def document_ref(notebook: str, filename: str) -> str:
+    """Return the stable, path-free reference used by agent retrieval tools."""
+    notebook = validate_notebook(notebook)
+    safe_filename = Path(filename).name
+    if safe_filename != filename or not safe_filename:
+        raise BookmarkStoreError("filename must be a basename")
+    return f"{notebook}/{Path(safe_filename).stem}"
+
+
 def _legacy_value(payload: str, key: str) -> str | None:
     """Read a safely quoted value from legacy repr-like metadata text."""
     match = re.search(_LEGACY_VALUE_PATTERN.format(key=re.escape(key)), payload)
@@ -130,6 +147,7 @@ def _metadata_fields(metadata_path: Path) -> tuple[str, str | None, str | None] 
     if not _is_http_url(url):
         logger.warning("Skipping bookmark metadata without an HTTP(S) URL: %s", metadata_path)
         return None
+    assert isinstance(url, str)
     return (
         url,
         title if isinstance(title, str) else None,
@@ -272,8 +290,6 @@ def search_documents(
                     continue
 
                 content_filename = f"{filepath.stem}.md" if result_source == "summaries" else filepath.name
-                content_exists = (input_dir(name) / content_filename).is_file()
-                has_summary = summary_exists(name, content_filename)
                 for line_number, line in enumerate(lines, 1):
                     if needle not in line.casefold():
                         continue
@@ -286,8 +302,7 @@ def search_documents(
                         "notebook": name,
                         "source": result_source,
                         "filename": filepath.name,
-                        "content_exists": content_exists,
-                        "summary_exists": has_summary,
+                        "document_ref": document_ref(name, filepath.name),
                         "bookmark_urls": bookmark_urls_for_filename(name, content_filename),
                         "lines": [],
                     })
@@ -310,4 +325,183 @@ def search_documents(
         "returned_matches": returned_matches,
         "truncated": truncated,
         "skipped_files": skipped_files,
+    }
+
+
+def search_document_page(
+    query: str,
+    *,
+    notebook: str | None = None,
+    source: str = "summaries",
+    max_documents: int = DEFAULT_PAGE_DOCUMENTS,
+    max_matches_per_document: int = DEFAULT_MATCHES_PER_DOCUMENT,
+    offset: int = 0,
+) -> dict:
+    """Return one compact page of matching documents for agent exploration."""
+    if not isinstance(query, str):
+        raise BookmarkStoreError("query must be a string")
+    query = query.strip()
+    if not query:
+        raise BookmarkStoreError("query must not be empty")
+    if len(query) > MAX_QUERY_LENGTH:
+        raise BookmarkStoreError(f"query must not exceed {MAX_QUERY_LENGTH} characters")
+    if isinstance(max_documents, bool) or not isinstance(max_documents, int) or not 1 <= max_documents <= MAX_PAGE_DOCUMENTS:
+        raise BookmarkStoreError(f"max_documents must be an integer from 1 to {MAX_PAGE_DOCUMENTS}")
+    if (isinstance(max_matches_per_document, bool) or not isinstance(max_matches_per_document, int)
+            or not 1 <= max_matches_per_document <= MAX_MATCHES_PER_DOCUMENT):
+        raise BookmarkStoreError(
+            f"max_matches_per_document must be an integer from 1 to {MAX_MATCHES_PER_DOCUMENT}"
+        )
+    if isinstance(offset, bool) or not isinstance(offset, int) or offset < 0:
+        raise BookmarkStoreError("offset must be a non-negative integer")
+    source = _validated_source(source)
+    notebooks = [validate_notebook(notebook)] if notebook is not None else list_notebooks()
+    needle = query.casefold()
+    page: list[dict] = []
+    matched_files = 0
+    skipped_files = 0
+    has_more = False
+
+    for name in notebooks:
+        locations: list[tuple[SearchSource, Path, str]] = []
+        if source in ("summaries", "both"):
+            locations.append(("summaries", input_dir(name), "*.llm"))
+        if source in ("input", "both"):
+            locations.append(("input", input_dir(name), "*.md"))
+        for result_source, directory, pattern in locations:
+            if not directory.is_dir():
+                continue
+            for filepath in sorted(directory.glob(pattern)):
+                try:
+                    lines = filepath.read_text(encoding="utf-8", errors="replace").splitlines()
+                except OSError:
+                    skipped_files += 1
+                    continue
+                matching_lines = [
+                    {"line_number": line_number, "line": line}
+                    for line_number, line in enumerate(lines, 1)
+                    if needle in line.casefold()
+                ]
+                if not matching_lines:
+                    continue
+                if matched_files >= offset + max_documents:
+                    has_more = True
+                    break
+                if matched_files >= offset:
+                    content_filename = f"{filepath.stem}.md" if result_source == "summaries" else filepath.name
+                    page.append({
+                        "notebook": name,
+                        "source": result_source,
+                        "filename": filepath.name,
+                        "document_ref": document_ref(name, filepath.name),
+                        "bookmark_urls": bookmark_urls_for_filename(name, content_filename),
+                        "lines": matching_lines[:max_matches_per_document],
+                        "matching_lines": len(matching_lines),
+                        "lines_truncated": len(matching_lines) > max_matches_per_document,
+                    })
+                matched_files += 1
+            if has_more:
+                break
+        if has_more:
+            break
+
+    next_offset = offset + len(page)
+    return {
+        "query": query,
+        "source": source,
+        "notebooks": notebooks,
+        "matches": page,
+        "returned_files": len(page),
+        "returned_matches": sum(len(match["lines"]) for match in page),
+        "offset": offset,
+        "next_offset": next_offset if has_more else None,
+        "has_more": has_more,
+        "skipped_files": skipped_files,
+        "retrieval_hint": (
+        "Use get_documents with selected document_ref values. Prefer summary, then content; "
+        "request metadata when provenance is needed."
+        ),
+    }
+
+
+def _parse_document_ref(reference: str) -> tuple[str, str]:
+    if not isinstance(reference, str) or reference.count("/") != 1:
+        raise BookmarkStoreError("document_ref must have the form 'notebook/stem'")
+    notebook, stem = reference.split("/", 1)
+    validate_notebook(notebook)
+    if not stem or Path(stem).name != stem or stem in {".", ".."} or "\\" in stem:
+        raise BookmarkStoreError("invalid document_ref")
+    return notebook, stem
+
+
+def get_documents(
+    document_refs: list[str],
+    artifact: str = "summary",
+    *,
+    start_line: int | None = None,
+    end_line: int | None = None,
+) -> dict:
+    """Read a bounded batch of canonical artifacts by stable document reference."""
+    if not isinstance(document_refs, list) or not document_refs:
+        raise BookmarkStoreError("document_refs must be a nonempty list")
+    if len(document_refs) > MAX_DOCUMENT_BATCH:
+        raise BookmarkStoreError(f"document_refs may contain at most {MAX_DOCUMENT_BATCH} entries")
+    if artifact not in ("summary", "content", "metadata"):
+        raise BookmarkStoreError("artifact must be 'summary', 'content', or 'metadata'")
+    if start_line is not None and (isinstance(start_line, bool) or not isinstance(start_line, int) or start_line < 1):
+        raise BookmarkStoreError("start_line must be a positive integer or omitted")
+    if end_line is not None and (isinstance(end_line, bool) or not isinstance(end_line, int) or end_line < 1):
+        raise BookmarkStoreError("end_line must be a positive integer or omitted")
+    if start_line is not None and end_line is not None and end_line < start_line:
+        raise BookmarkStoreError("end_line must not be less than start_line")
+
+    suffix = {"summary": ".llm", "content": ".md", "metadata": ".json"}[artifact]
+    documents: list[dict] = []
+    remaining = MAX_RETRIEVAL_BYTES
+    response_truncated = False
+    for reference in document_refs:
+        if remaining <= 0:
+            response_truncated = True
+            documents.append({"document_ref": reference, "error": "response byte limit reached"})
+            continue
+        try:
+            notebook, stem = _parse_document_ref(reference)
+            path = input_dir(notebook) / f"{stem}{suffix}"
+            if not path.is_file():
+                documents.append({"document_ref": reference, "error": f"{artifact} artifact not found"})
+                continue
+            raw = path.read_text(encoding="utf-8", errors="replace")
+            lines = raw.splitlines()
+            first = start_line or 1
+            last = min(end_line or len(lines), len(lines))
+            selected = "\n".join(lines[first - 1:last])
+            encoded = selected.encode("utf-8")
+            truncated = len(encoded) > remaining
+            if truncated:
+                selected = encoded[:remaining].decode("utf-8", errors="ignore")
+                response_truncated = True
+            remaining -= len(selected.encode("utf-8"))
+            content: object = selected
+            if artifact == "metadata" and not truncated and start_line is None and end_line is None:
+                try:
+                    content = json.loads(selected)
+                except json.JSONDecodeError:
+                    content = selected
+            documents.append({
+                "document_ref": reference,
+                "artifact": artifact,
+                "filename": path.name,
+                "content": content,
+                "start_line": first,
+                "end_line": last,
+                "total_lines": len(lines),
+                "truncated": truncated,
+            })
+        except (BookmarkStoreError, OSError) as exc:
+            documents.append({"document_ref": reference, "error": str(exc)})
+    return {
+        "artifact": artifact,
+        "documents": documents,
+        "response_truncated": response_truncated,
+        "max_response_bytes": MAX_RETRIEVAL_BYTES,
     }

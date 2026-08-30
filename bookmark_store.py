@@ -3,6 +3,18 @@
 Bookmark storage implementation lives in :mod:`services.bookmark_store`.
 """
 
-from services.bookmark_store import BookmarkStoreError, list_bookmarks, search_documents
+from services.bookmark_store import (
+	BookmarkStoreError,
+	get_documents,
+	list_bookmarks,
+	search_document_page,
+	search_documents,
+)
 
-__all__ = ["BookmarkStoreError", "list_bookmarks", "search_documents"]
+__all__ = [
+	"BookmarkStoreError",
+	"get_documents",
+	"list_bookmarks",
+	"search_document_page",
+	"search_documents",
+]
