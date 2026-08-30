@@ -20,6 +20,20 @@ def test_visible_notebooks_can_hide_the_example_notebook(tmp_path: Path) -> None
     assert config._visible_notebooks(data_dir, hide_mynotebook=False) == ["alpha", "mynotebook"]
 
 
+def test_home_page_uses_configured_application_name(
+    semantic_root: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(config, "APP_NAME", "Acme Knowledge Base")
+    monkeypatch.setattr(config, "APP_DESCRIPTION", "Search Acme's research notebooks.")
+
+    response = app.app.test_client().get("/")
+
+    assert response.status_code == 200
+    assert b"<title>Acme Knowledge Base</title>" in response.data
+    assert b">Acme Knowledge Base</a>" in response.data
+    assert b"Search Acme&#39;s research notebooks." in response.data
+
+
 @pytest.fixture
 def semantic_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     data_dir = tmp_path / "data"

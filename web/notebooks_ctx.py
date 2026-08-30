@@ -51,6 +51,8 @@ def inject_notebooks():
     """Make notebooks and current_notebook available to all templates."""
     notebook = request.view_args.get("notebook", "") if request.view_args else ""
     return {
+        "app_name": config.APP_NAME,
+        "app_description": config.APP_DESCRIPTION,
         "notebooks": config.NOTEBOOKS,
         "current_notebook": notebook,
         "is_authenticated": _is_authenticated(),

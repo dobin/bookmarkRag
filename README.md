@@ -20,6 +20,19 @@ Required API keys for now:
 * FIRECRAWL_API_KEY
 * GRAPHRAG_API_KEY (same as OPENAI_API_KEY)
 
+### Application branding
+
+The default web UI name is `BookmarkRAG`. Set `BOOKMARK_RAG_APP_NAME` before
+starting the application to use a branded name in page titles, the navigation
+bar, and the home-page heading. Set `BOOKMARK_RAG_APP_DESCRIPTION` to replace
+the short description beneath the home-page heading:
+
+```
+BOOKMARK_RAG_APP_NAME="Acme Knowledge Base" \
+BOOKMARK_RAG_APP_DESCRIPTION="Search Acme's research notebooks." \
+python app.py
+```
+
 ### Notebook descriptions
 
 The home page displays notebook descriptions from `notebook_descriptions.yaml` by

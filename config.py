@@ -6,6 +6,11 @@ _BASE_DIR = Path(__file__).resolve().parent
 
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "")
 BOOKMARK_RAG_DOMAIN = os.environ.get("BOOKMARK_RAG_DOMAIN", "").strip().rstrip("/")
+APP_NAME = os.environ.get("BOOKMARK_RAG_APP_NAME", "").strip() or "BookmarkRAG"
+APP_DESCRIPTION = (
+    os.environ.get("BOOKMARK_RAG_APP_DESCRIPTION", "").strip()
+    or "Browse indexed notebooks and access their bookmark knowledge bases."
+)
 NOTEBOOK_DESCRIPTIONS_ENABLED = os.environ.get(
     "NOTEBOOK_DESCRIPTIONS_ENABLED", "true"
 ).casefold() not in {"0", "false", "no", "off"}
