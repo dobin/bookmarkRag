@@ -11,6 +11,15 @@ from services import graphrag_api
 from web import views_api
 
 
+def test_visible_notebooks_can_hide_the_example_notebook(tmp_path: Path) -> None:
+    data_dir = tmp_path / "data"
+    (data_dir / "alpha").mkdir(parents=True)
+    (data_dir / "mynotebook").mkdir()
+
+    assert config._visible_notebooks(data_dir, hide_mynotebook=True) == ["alpha"]
+    assert config._visible_notebooks(data_dir, hide_mynotebook=False) == ["alpha", "mynotebook"]
+
+
 @pytest.fixture
 def semantic_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     data_dir = tmp_path / "data"

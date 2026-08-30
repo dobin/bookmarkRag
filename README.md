@@ -28,6 +28,12 @@ add, change, or remove entries to customize the displayed descriptions. Set
 `NOTEBOOK_DESCRIPTIONS_ENABLED=false` before starting the application to hide
 all descriptions while keeping the configuration file intact.
 
+### Example notebook
+
+The repository includes `data/mynotebook` as an example. Set
+`HIDE_MYNOTEBOOK=true` before starting the application to omit it from the web
+interface and prevent access to its web routes. Other notebooks remain visible.
+
 
 ## Directories
 
