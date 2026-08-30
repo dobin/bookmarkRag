@@ -10,17 +10,15 @@
 	</div>
 
 	<section class="mb-5" aria-labelledby="public-search-heading">
-		<h2 id="public-search-heading" class="h3 mb-3">Search everything</h2>
+		<h2 id="public-search-heading" class="h3 mb-3">Search</h2>
 		<div class="card shadow-sm">
 			<div class="card-body">
         <form action="{{ url_for('search.search') }}" method="get" class="row g-2 align-items-end">
 					<div class="col-md-6">
-						<label for="public-search-query" class="form-label">Search query</label>
 						<input type="text" class="form-control" id="public-search-query" name="query"
 						       placeholder="Search term" autocomplete="off" required>
 					</div>
 					<div class="col-md-2">
-						<label for="public-search-kind" class="form-label">Search</label>
             <select class="form-select" id="public-search-kind" name="kind">
 			  <option value="content">Content</option>
 			  <option value="summary" selected>Summary</option>
@@ -28,7 +26,6 @@
 						</select>
 					</div>
 					<div class="col-md-2">
-						<label for="public-search-notebook" class="form-label">Notebook</label>
             <select class="form-select" id="public-search-notebook" name="notebook">
 							<option value="" selected>All notebooks</option>
 							{% for notebook in notebook_rows %}
@@ -45,8 +42,9 @@
 					</div>
 				</form>
 				<p class="small text-muted mt-2 mb-0">
-          Content and summary searches match literal text. Semantic search finds related chunks by meaning
-          across the selected notebook(s). No login required; no LLM answer is generated.
+					<code>Summary</code> searches through LLM-generated summaries. <br>
+					<code>Content</code> searches all mirrored page content. <br>
+					<code>Semantic</code> finds related chunks by meaning.
 				</p>
 			</div>
     </div>
@@ -122,18 +120,17 @@
 			<div class="card h-100 shadow-sm">
 				<div class="card-body">
 					<h2 id="mcp-heading" class="h4">MCP server</h2>
-					<p class="text-muted">Connect an MCP-capable client to this website's public, read-only knowledge base.</p>
 					{% if mcp_url %}
 						<p class="mb-2">Add <code>{{ mcp_url }}</code> as a Streamable HTTP MCP server.</p>
 					{% else %}
 						<p class="mb-2">The public MCP URL will be available at <code>https://&lt;your-domain&gt;/mcp</code> once configured.</p>
 					{% endif %}
+					Tools:
 					<ul class="mb-0">
 						<li><code>list_bookmarks(notebook=None)</code> lists catalog bookmarks.</li>
 						<li><code>search_documents(query, notebook=None, source="summaries")</code> searches staged excerpts.</li>
 						<li><code>get_documents(document_refs, artifact="summary")</code> retrieves selected artifacts.</li>
 					</ul>
-					<p class="small text-muted mt-3 mb-0">MCP searches are literal, case-insensitive, and do not invoke GraphRAG or an LLM. A local stdio server for a local checkout is also available in <code>.vscode/mcp.json</code>.</p>
 				</div>
 			</div>
 		</section>
