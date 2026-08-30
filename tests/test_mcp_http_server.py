@@ -35,3 +35,13 @@ def test_http_settings_requires_public_domain(monkeypatch: pytest.MonkeyPatch) -
 
     with pytest.raises(RuntimeError, match="BOOKMARK_RAG_DOMAIN is required"):
         mcp_http_server._http_settings()
+
+
+def test_http_settings_binds_all_interfaces_in_production(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("BOOKMARK_RAG_DOMAIN", "bookmarks.example.test")
+    monkeypatch.setenv("PROD", "true")
+    monkeypatch.delenv("MCP_HTTP_HOST", raising=False)
+
+    host, *_ = mcp_http_server._http_settings()
+
+    assert host == "0.0.0.0"

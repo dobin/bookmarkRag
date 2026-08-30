@@ -28,7 +28,8 @@ def _public_host(domain: str) -> str:
 
 def _http_settings() -> tuple[str, int, str, TransportSecuritySettings]:
     """Read hosted-MCP settings and enforce the configured public host."""
-    host = os.environ.get("MCP_HTTP_HOST", "127.0.0.1")
+    production = os.environ.get("PROD", "").casefold() in {"1", "true", "yes", "on"}
+    host = os.environ.get("MCP_HTTP_HOST", "0.0.0.0" if production else "127.0.0.1")
     path = os.environ.get("MCP_HTTP_PATH", "/mcp")
     if not path.startswith("/"):
         raise RuntimeError("MCP_HTTP_PATH must start with '/'")
