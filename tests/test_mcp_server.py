@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 
 from services import bookmark_store
-import mcp_server
+import mcp.mcp_server as mcp_server
 
 
 def test_server_publishes_only_read_only_bookmark_tools() -> None:
