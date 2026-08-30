@@ -68,15 +68,15 @@
 					<p class="text-muted">All endpoints accept JSON and return JSON. Replace <code>&lt;notebook&gt;</code> with a notebook name from the table.</p>
 					<h3 class="h6 mt-3">File search</h3>
 					<p class="mb-2"><code>POST /&lt;notebook&gt;/api/file-search</code></p>
-					<pre class="bg-body-tertiary border rounded p-3"><code>Content-Type: application/json
-
-{"query": "Windows exception handling", "source": "both", "limit": 100}</code></pre>
+					<pre class="bg-body-tertiary border rounded p-3"><code>curl -X POST "http://localhost:5000/&lt;notebook&gt;/api/file-search" \
+  -H 'Content-Type: application/json' \
+  -d '{"query":"Windows exception handling","source":"both","limit":100}'</code></pre>
 					<p class="small text-muted">Use <code>source: "summaries"</code> for <code>.llm</code> summaries, <code>"input"</code> for full <code>.md</code> content, or <code>"both"</code> (the default). Search is literal and case-insensitive.</p>
 					<h3 class="h6 mt-4">Semantic search</h3>
 					<p class="mb-2"><code>POST /&lt;notebook&gt;/api/semantic-search</code></p>
-					<pre class="bg-body-tertiary border rounded p-3 mb-0"><code>Content-Type: application/json
-
-{"query": "Windows exception handling", "limit": 10}</code></pre>
+					<pre class="bg-body-tertiary border rounded p-3 mb-0"><code>curl -X POST "http://localhost:5000/&lt;notebook&gt;/api/semantic-search" \
+  -H 'Content-Type: application/json' \
+  -d '{"query":"Windows exception handling","limit":10}'</code></pre>
 					<p class="small text-muted mt-3 mb-0">This endpoint requires login when authentication is enabled. It returns matching vector text units and metadata; it does not generate an answer.</p>
 				</div>
 			</div>
