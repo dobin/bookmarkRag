@@ -1,0 +1,386 @@
+# https://blog.deeb.ch/posts/maldev-myths/
+
+<!DOCTYPE html><html lang="en-us">
+
+
+<body>
+<div class="main">
+
+
+
+
+
+<div class="content-wrapper">
+    
+
+    <article class="post article-content main-content">
+        <h1 class="title"> MalDev Myths </h1>
+        <div class="content"> <p>For years I have seen techniques used in MalDev that have been obsolete
+for some time now or just applied wrongly. A short list.</p>
+<p>When doing MalDev, you have to consider against what you want
+to protect your code:</p>
+<ul>
+<li>Automated systems which will detect and block your malware</li>
+<li>Manual reverse engineering of the functionality of your malware</li>
+</ul>
+<p>I focus on the first, as I want a working beacon. If the SOC reverses
+my malware, I buy them beer.
+This article is RedTeaming specific and about loaders and droppers.
+Storing malicious code in files or memory.</p>
+<p>Automated detection mostly means AntiVirus (AV), EDR, and stuff
+like sandboxes. This article doesn’t consider the use case for
+manual reverse engineering.</p>
+<p>This list is based on Sektor7’s courses (maldev essentials, intermediate, and Windows evasion).
+But I see this kind of obsolete information everywhere - as if the hacker scene didn’t catch up to
+current developments, and just blindly rehashes stuff from the 90s.
+Even worse is that all MalDev courses and trainings I’ve seen just randomly throw techniques together and hope for the best. Instead of analyzing security software first, and finding blind spots. For example by trying to <a href="https://blog.deeb.ch/posts/how-edr-works/">understand how EDRs work</a> first.</p>
+<p>This information is not based on experience but on understanding computer fundamentals, Windows basics, and security products.</p>
+<h2 id="where-to-store-payloads">Where to store payloads</h2>
+<p>If you want to store data in an exe, for example for a dropper, there are
+several places to choose from, including:</p>
+<ul>
+<li>.text</li>
+<li>.data</li>
+<li>.rsrc</li>
+</ul>
+<p>Which one should you take? It doesn’t really matter.</p>
+<p><img src="https://blog.deeb.ch/malwaremyths/pe-sections.png" alt="PE sections"></p>
+<p><img src="https://blog.deeb.ch/malwaremyths/pe-sections2.png" alt="PE sections2"></p>
+<p>If you modify an existing .exe, both <code>.text</code> and <code>.data</code> don’t really
+have enough free space (only maybe a few 100 bytes). If you add a lot
+of data in it, you gonna trash it, making the program unable to run
+correctly. <code>.rsrc</code> often has lots of available space.</p>
+<p>If you generate the .exe by yourself, it doesn’t matter. EDR’s don’t really
+see where data is coming from when copying it around. It’s inside the process space from one memory location to another, which can’t really be seen -
+the EDR isn’t able to distinguish it.</p>
+<p>Software doing static analysis of the file may influence your decision a little bit.</p>
+<p><strong>Conclusion</strong>:</p>
+<ul>
+<li>Stop to care about where to put your data.</li>
+<li>Just put code into <code>.text</code>, and data into <code>.data</code> or <code>.rsrc</code>. Look normal.</li>
+<li>When backdooring exes, use <code>.rsrc</code> or other sections where overwriting data doesn’t matter</li>
+<li>Just <em>don’t</em> create new PE sections, that stand out.</li>
+</ul>
+<h2 id="entropy">Entropy</h2>
+<p>If you encrypt or compress stuff and put it into a .exe, it will have
+higher entropy than the surrounding data. This can be detected, and will
+result in an event like:</p>
+<blockquote>
+<p>Higher entropy found in .text section between 0x1234 and 0x5432.</p>
+</blockquote>
+<p>Here a graphical example:</p>
+<p><img src="https://blog.deeb.ch/malwaremyths/pe-entropy2.png" alt="PE entropy"></p>
+<p>This is not a reliable detection. Security software blocking executables
+with high entropy at unexpected places will block many genuine executables. The above
+screenshot is from the tool DIE-engine, analyzing DIE-engine itself.</p>
+<p>Discussing entropy is cool - but it’s not that relevant for automated analysis.</p>
+<p><strong>Conclusion</strong>:</p>
+<ul>
+<li>Entropy can help manual reverse engineering but is rarely a reliable automated indicator.</li>
+<li>If you are scared of entropy analysis, just base64 your data</li>
+<li>Generally try to blend in, by encoding your stuff similar to surrounding data</li>
+</ul>
+<h2 id="how-to-encryptencode-the-payload-for-storage">How to encrypt/encode the payload for storage</h2>
+<p>In many shellcode loaders, there are several implementations of different encryption/encoding
+methods implemented. Like XOR, RC4, AES, Hex-Encoding, or similar
+(see <a href="https://github.com/r00tkie/CipherCraft">1</a>
+<a href="https://github.com/Ne0nd0g/go-shellcode">2</a>
+<a href="https://github.com/D3Ext/Hooka">3</a>
+).</p>
+<p>Which one you choose doesn’t matter. A EDR or AV cannot magically crack encryption -
+it doesn’t have a quantum computer inside. It doesn’t even know which encryption algorithm
+you implemented - hell it doesn’t even know that you encrypt or decrypt something.
+It cannot trace all the instructions, and recover the original intent from it.
+An exception is using standard Windows API to encrypt, like AES or Base64 from crypt32.dll .
+Or when using a standard encryption library with well-known signatures.
+See <a href="https://github.com/dobin/ShellcodeObfuscationLab">Shellcode Obfsucation Lab</a> for a detailed analysis.</p>
+<p>Static analysis software which have enough time (async, e.g. virustotal) can attempt
+to try all the standard decodings like base64 or XOR with all 255 single byte keys on all (?),
+data, like in global variables.</p>
+<p><strong>Conclusion</strong>:</p>
+<ul>
+<li>Encrypt your stuff however you want, it doesn’t matter much</li>
+<li>Avoid using Windows API’s to do it tho</li>
+<li>The data will be securely encrypted in the file on disk - and decrypted in memory on usage (memory scanners!)</li>
+<li>Try to avoid 1-byte XOR, as it results in a potential pattern - use at least 2-byte XOR</li>
+<li>If your data is very easily discernable, avoid standard methods (base64, single byte XOR etc.) or prepend a random character</li>
+</ul>
+<h2 id="function-call-obfuscation--iat-heuristics">Function call obfuscation / IAT heuristics</h2>
+<p>The .exe has a list of all used/imported DLL functions in the IAT (import address table).
+Some security software has a look at this to decide if the software looks malicious
+or not. If your output is “may be malicious”, then it’s <a href="https://en.wikipedia.org/wiki/Heuristic_analysis">heuristics</a>.</p>
+<p>It’s not reliable, by definition, and as most Windows software does a lot of crazy things,
+and imports the typical malicious-looking functions.</p>
+<p>See for example the imports from the tool cffexplorer.exe of itself. Is this malicious or not?</p>
+<p><img src="https://blog.deeb.ch/malwaremyths/pe-imports.png" alt="PE imports"></p>
+<p>Analyze putty, process monitor, or any other tool to see how abnormal their IAT looks.</p>
+<p><strong>Conclusion</strong>:</p>
+<ul>
+<li>Don’t use/import <em>exclusively</em> potentially malicious functions - try to look normal.</li>
+<li>Try to make it look normal (good API stuffing, or backdooring existing executables).</li>
+<li>If scared, use <code>GetModuleHandle()</code> and <code>GetProcAddres()</code> - these are very commonly used anyway by genuine programs, but can be an IOC</li>
+<li>Alternatively, implement <code>GetModuleHandle()</code> &amp; <code>GetProcAddress</code> yourself with a PEB walk. But: Existing PEB walk implementations ou copy may be signatures</li>
+</ul>
+<h2 id="signed-exe--certificate">Signed EXE / Certificate</h2>
+<p>What happens if you (correctly) sign an executable? Will it not be scanned by the AV?
+Will it be whitelisted by the EDR? I don’t know, but I doubt it.
+This is heavily security tool dependent.</p>
+<p>Leaked code signing certs are commonly available - expired, revoked, or not.
+Will signing your malware with such a cert improve detection, or make it more obvious?
+Can security software really depend on it, when we have leaked certs - and DLL sideloading?
+What about self-signed certificates, are they useful at all?</p>
+<p>I think some security vendors want to make their lives easy, and for performance- and false-positive reasons will skip signed executables. Reasonable security software would just mostly ignore it.</p>
+<p><strong>Conclusion</strong>:</p>
+<ul>
+<li>Sign it and try. I usually don’t.</li>
+</ul>
+<h2 id="codeprocess-injection">Code/Process injection</h2>
+<p>Want to inject code into another process? Dont.</p>
+<p>There are typically three steps involved:</p>
+<ul>
+<li>Access the target process (<code>OpenProcess()</code>)</li>
+<li>Allocate and write memory in remote process (<code>VirtualAllocEx()</code>, <code>WriteProcessMemory()</code>)</li>
+<li>Execution primitive (<code>CreateRemoteThread()</code>)</li>
+</ul>
+<p>EDR will depend on seeing variants of these three things for detection.
+Cross-process stuff is well scrutinized by the EDR.</p>
+<p><strong>Conclusion</strong>:</p>
+<ul>
+<li>If you want to do process injection, skip at least one of the three primitives</li>
+<li>As a starter, don’t do <code>CreateRemoteThread()</code> - find another way</li>
+<li>Prefer DLL sideloading</li>
+</ul>
+<h2 id="edr-bypass--ntdll-unhooking">“EDR Bypass” / ntdll unhooking</h2>
+<p>Some EDR’s hook <code>ntdll.dll</code> instead of using ETW. Only bad ones. Many good
+EDR’s don’t use this technique anymore. Including MDE, Elastic, Cortex.</p>
+<p>ntdll hooking is obsolete. It always was, and always will be, bypassable
+with direct- or indirect syscalls, or ntdll recovering or re-patching.
+The EDR can also just check if their hooks got removed - it blows my
+mind this is not standard. Direct- or indirect syscalls can be reliably
+detected with ETW and callstack analysis, and are a big IOC.
+The public implementations for in/direct syscalls are also often signatured.</p>
+<p>If you <em>have</em> to use ntdll syscalls, include callstack spoofing.</p>
+<p><strong>Conclusion</strong>:</p>
+<ul>
+<li>If you work against an obsolete fun EDR which does ntdll hooking, do some non-signatured direct- or indirect syscalls implementation with callstack spoofing</li>
+</ul>
+<h2 id="etw-patching">ETW Patching</h2>
+<p>ETW is the Event Tracing for Windows, its like Syslog, or Windows Event Logs.
+A process can create ETW events by itself: e.g. for performance monitoring,
+or application-specific events. The Windows kernel will also generate ETW
+events, based on what a process is doing.</p>
+<p>It’s not possible to disable ETW, unless you are in the Kernel.
+You can only stop the application-specific events by patching
+ETW in the process - which aren’t that important. Most of the ETW
+events are not created by the process itself.</p>
+<pre tabindex="0"><code> Process &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; OS &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; EDR &nbsp; &nbsp; &nbsp; 
+┌─────────────┐ EtwWrite() ┌──────────┐ &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;┌──────────────┐
+│ &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; ├───────────►│ &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;│ &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;│ &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;│
+│ &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; │ &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;│ ────────►│ &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;│ &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;│
+│ &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; │ &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;│ &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;│ &nbsp; ETW &nbsp; &nbsp;│ &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;│
+│ &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; │ &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;│ &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;├─────────►│ &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;│
+│ &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; │ &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;│ &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;│ &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;│ &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;│
+│ &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; │ syscalls &nbsp; │ ────────►│ &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;│ &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;│
+│ &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; ├───────────►│ &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;│ &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;└──────────────┘
+│ &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; │ &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;│ &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;│ &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
+│ &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; │ &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;└──────────┘ &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
+│ &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; │ &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
+│ &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; │ &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
+└─────────────┘ &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
+</code></pre><p>The main confusion comes from the fact that there are “two ETW”:
+One can be influenced and patched away - the other, with the important
+data, cannot. Also, AMSI and Defender themselves create many ETW
+events about what they are doing, which may add to the confusion.</p>
+<p><strong>Conclusion</strong>:</p>
+<ul>
+<li>Just don’t. Unless you can 100% prove it’s useful</li>
+<li>Unless you want to patch AMSI to load .NET or Powershell code.</li>
+</ul>
+<h2 id="virustotal-299">VirusTotal 2/99</h2>
+<p>VirusTotal is mostly static analysis. Which means it scans the file
+for known signatures. It does not really do a lot of runtime
+analysis (executing the file), like with a Sandbox or EDR.</p>
+<p>VirusTotal can be trivially bypassed by:</p>
+<ul>
+<li>Encrypting your shellcode</li>
+<li>Decrypt it without signatured code</li>
+<li>Add some execution guardrails</li>
+</ul>
+<p>Conclusion:</p>
+<ul>
+<li>If you publish a x/y VT result to prove “FUD”, I know it’s gonna be bad</li>
+</ul>
+<h2 id="unusual-c2-channels">Unusual C2 Channels</h2>
+<p>A beacon usually communicates with the C2 server relay via HTTP GET and POST
+messages.</p>
+<p>Some people use other services:</p>
+<ul>
+<li>Google Docs, Sheets</li>
+<li>Twitter, Xing, Linkedin</li>
+<li>Pastebin</li>
+<li>Slack, Discord, Teams</li>
+<li>Azure Cloud Services</li>
+<li>ETH Smart Contracts via Web API</li>
+</ul>
+<p>So instead of sending HTTP requests to X, we send it to Y (with a few correct headers).
+There is nothing technically impressive about this. These techniques often generate a lot of
+media coverage, if the service being used is new, cool or uncool
+(think Teams, Blockchain, LLMs).</p>
+<p>This can surely help blend in the C2 traffic for an attentive SOC - but that’s
+very rare. More useful is to bypass domain whitelisting, which is even rarer.</p>
+<p>Conclusion:</p>
+<ul>
+<li>Just Update the standard C2 HTTP template (malleable) if there’s detection for the default HTTP requests</li>
+</ul>
+<h1 id="examples">Examples</h1>
+<p>Random examples of loaders I encounter.</p>
+<h2 id="pwntricks">Pwntricks</h2>
+<p>In the blog <a href="https://www.pwntricks.com/Bypass-CortexXDR-and-Sophos-EDR-like-real-red-teamer">Bypass Cortexxdr And Sophos Edr Like Real Red Teamer</a>:</p>
+<ul>
+<li>Patching ETW: ETW is not really used here, bad</li>
+<li>Decrypt with AES: using Windows functions, bad</li>
+<li>Unhook ntdll: Cortex doesn’t do hooking. Sophos does. Still bad</li>
+<li>Module Stomping: Good</li>
+<li>Local thread hijacking: Good</li>
+<li>Custom Havoc C2 profile: Good</li>
+<li>Sandbox bypass with file bloating: Good</li>
+</ul>
+<p>The first three techniques are obsolete and most likely not needed, and only increase the detection rate. The last four techniques are good and useful and do the actual bypass work.</p>
+<h2 id="hunter">Hunter</h2>
+<p><a href="https://github.com/S3N4T0R-0X0/Hunter">https://github.com/S3N4T0R-0X0/Hunter</a></p>
+<ul>
+<li>API Unhooking: Not important</li>
+<li>Syscall Dispatcher: Together with API unhooking, not important</li>
+<li>ETW Nullification: Not important or helpful</li>
+<li>Process termination methods: Irrelevant</li>
+<li>Anti-Analysis: Simple, irrelevant</li>
+<li>Sandbox Detection: Good!</li>
+</ul>
+<p>The only useful part of this project is the Sandbox Detection.
+The rest increases the detection rate more than reducing it.</p>
+<h2 id="outsmarting-windows-defender">Outsmarting Windows Defender</h2>
+<p><a href="https://blog.rian-friedt.de/windows-evasion-techniques-outsmarting-windows-defender/">https://blog.rian-friedt.de/windows-evasion-techniques-outsmarting-windows-defender/</a></p>
+<ul>
+<li>Static Evasion:
+<ul>
+<li>Strip identifying metadata from payloads: Good</li>
+<li>Modify open-source crypters to evade detection: Good</li>
+<li>Use PowerShell reflection to bypass AMSI: Good</li>
+</ul>
+</li>
+<li>Dynamic Evasion:
+<ul>
+<li>Spoof parent-child process relationships: Ok, but can be an IOC</li>
+<li>Unhook APIs and use direct syscalls: Bad, not relevant for Defender</li>
+<li>Abuse trusted system binaries (LOLBAS): Good</li>
+</ul>
+</li>
+</ul>
+<p>The training seems to use Powershell/DotNet loaders, which is good (hide behind JIT).
+Will block AMSI so the managed code is not being scanned.
+Identify the signatured loader/amsi-patch code and change it.
+A reasonable and sane approach.</p>
+<h2 id="erebus">Erebus</h2>
+<p><a href="https://github.com/RePRGM/Erebus/tree/main">https://github.com/RePRGM/Erebus/tree/main</a></p>
+<ul>
+<li>ETW patching: Bad. Doesnt help, as payload is not in a managed language</li>
+<li>NTDLL unhooking: Situational</li>
+<li>Custom GetProcAddress implementation: Questionable. Does it really help?</li>
+<li>Sandbox checking: Good</li>
+<li>Encryption with UUID, RCE, AES etc: Bad. Just use XOR</li>
+</ul>
+<p>Using NIM can be a IOC though.</p>
+<h1 id="rustloadloader">Rustloadloader</h1>
+<p><a href="https://blog.shellntel.com/p/evading-microsoft-defender">https://blog.shellntel.com/p/evading-microsoft-defender</a></p>
+<ul>
+<li>Use Rust: Irrelevant</li>
+<li>Use LUA: Good</li>
+<li>Use XOR: Good</li>
+<li>Use virustotal: Bad</li>
+</ul>
+<p>Seems to Rust-only version got caught by the Defender AV emulator.
+The Lua-Rust did not.</p>
+<h1 id="how-to-do-it-correctly">How to do it correctly</h1>
+<p>My proposed shellcode loader architecture:</p>
+<pre tabindex="0"><code> ┌──────────┐ &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
+ │ encrypted│ &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
+ │ Payload &nbsp;│ &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
+ └────┬─────┘ &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
+      │ &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
+      │ &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
+      ▼ &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
+┌──────┐ &nbsp; &nbsp;┌────────────┐ &nbsp; &nbsp;┌───────────┐ &nbsp; &nbsp;┌─────────────┐ &nbsp; ┌──────────┐ &nbsp; ┌────────────┐
+│ EXE &nbsp;│ &nbsp; &nbsp;│ Execution &nbsp;│ &nbsp; &nbsp;│ Anti &nbsp; &nbsp; &nbsp;│ &nbsp; &nbsp;│EDR &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;│ &nbsp; │ Alloc RW │ &nbsp; │ &nbsp;Payload &nbsp; │
+│ File ├───►│ Guardrails ├───►│ Emulation ├───►│deconditioner├──►│ Decode/Cp├──►│ &nbsp;Execution │
+│ &nbsp; &nbsp; &nbsp;│ &nbsp; &nbsp;│ &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;│ &nbsp; &nbsp;│ &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; │ &nbsp; &nbsp;│ &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; │ &nbsp; │ RX &nbsp; &nbsp; &nbsp; │ &nbsp; │ &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;│
+│ &nbsp; &nbsp; &nbsp;│ &nbsp; &nbsp;│ &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;│ &nbsp; &nbsp;│ &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; │ &nbsp; &nbsp;│ &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; │ &nbsp; │ Exec &nbsp; &nbsp; │ &nbsp; │ &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;│
+└──────┘ &nbsp; &nbsp;└────────────┘ &nbsp; &nbsp;└───────────┘ &nbsp; &nbsp;└─────────────┘ &nbsp; └──────────┘ &nbsp; └────────────┘
+</code></pre><h2 id="execution-guardrails">Execution Guardrails</h2>
+<p>Check first if you are on the intended target. For example by checking the ENV variables,
+if the host is in the correct AD.</p>
+<p>This will prohibit middleboxes from executing your code: VirusTotal, Proxy AV, Sandboxes etc.
+It will only be executed on the target, with its AV and EDR.</p>
+<h2 id="anti-emulation">Anti Emulation</h2>
+<p>Many AV will emulate the binary. The AV will interpret the instructions, and scan
+its memory for known signatures. Your encrypted will be exposed with this.</p>
+<p>Emulation will have a cutoff, and stop analysis after X amount of time,
+or Y amount of instructions executed. So at the start of your loader, do
+a few 100'000 instructions.</p>
+<p>Doing manual decryption of the shellcode may already fulfill the cutoff.
+This is where the myth of “more encryption means less detection” comes from.</p>
+<h2 id="edr-deconditioner">EDR deconditioner</h2>
+<p>To execute your decrypted shellcode, need to:</p>
+<ol>
+<li>Allocate memory RW</li>
+<li>Copy shellcode</li>
+<li>Change memory permissions to RX</li>
+<li>Execute the shellcode</li>
+</ol>
+<p>EDR deconditioning does number 1-3, many times, with non-malicious fake data, making the EDR tired of scanning our shit. Then later, do 1-4.</p>
+<h2 id="executing-the-shellcode">Executing the shellcode</h2>
+<p>Execute the shellcode as normal as possible. Just jump to the shellcode (<code>jmp</code>).</p>
+<p>Do not use execution primitives like <code>CreateThread()</code>. Or, only if you know its not well known (e.g. with a Windows function callbacks).</p>
+<h2 id="putting-it-together">Putting it together</h2>
+<p>Do the things I mention above first.</p>
+<p>If it still gets detected, the fun begins. Try to think about how the stuff
+gets detected, and try to bypass it. When you find a solution, take a step
+back and try to think about why it worked - if your assumption was correct.
+Or if it’s just not being detected anymore for completely unrelated reasons.</p>
+<p>For more information, see:</p>
+<ul>
+<li><a href="https://blog.deeb.ch/posts/supermega/">SuperMega Shellcode Loader</a></li>
+<li><a href="https://blog.deeb.ch/posts/exe-injection/">Cordyceps Injection Technique</a></li>
+<li><a href="https://blog.deeb.ch/posts/how-edr-works/">Anti EDR Compendium</a></li>
+<li>Slides <a href="https://docs.google.com/presentation/d/1BtLtsh0pBrF6XwlyGHoxBnuIAKtgJM4jwNSxTFRu1yo/edit?usp=sharing">My First and Last Shellcode Loader</a></li>
+</ul>
+<h1 id="maldev-course-examples">MalDev Course examples</h1>
+<h2 id="sektor7">Sektor7</h2>
+<p>Malware Dev Essentials:</p>
+<ul>
+<li>PE Intro</li>
+<li>Droppers
+&nbsp; * Where to store payloads</li>
+<li>Obfuscating and hiding
+&nbsp; * Shellcode encryption
+&nbsp; * Call obfuscation</li>
+<li>Backdoors and trojans
+&nbsp; * Backdooring PE</li>
+<li>Code injection
+&nbsp; * Injecting code into remote processes
+&nbsp; * Loading DLLs into remote processes</li>
+</ul> </div>
+        
+
+
+
+    </article>
+</div>
+
+  
+
+</div> 
+
+
+
+
+</body></html>

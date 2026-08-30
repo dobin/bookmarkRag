@@ -1,0 +1,31 @@
+Title:
+MalDev Myths
+
+Type:
+Blog Post
+
+Short Summary (4–8 sentences max):
+- This post critiques common “malware development” loader/dropper advice that the author argues is outdated or misapplied against modern AV/EDR and sandboxing.  
+- It reframes priorities around defeating automated detection (emulation, memory scanning, telemetry) rather than manual reverse engineering.  
+- Key points include: PE section choice for embedded payloads is usually irrelevant (but avoid adding new sections), entropy is a weak automated signal, and the specific encryption algorithm matters less than avoiding signatured implementations and obvious patterns.  
+- It challenges popular “EDR bypass” tropes like ntdll unhooking and ETW patching, emphasizing that ETW can’t truly be disabled from user mode and that syscall tricks are often detectable via ETW/callstack analysis.  
+- The author discourages classic remote process injection primitives (OpenProcess/VirtualAllocEx/WriteProcessMemory/CreateRemoteThread) and suggests focusing on guardrails, anti-emulation, and “EDR deconditioning” before straightforward shellcode execution.  
+- Useful for red teamers and offensive tool developers building Windows loaders who want a detection-driven approach rather than technique-stacking.
+
+Technical Focus:
+- PE sections (.text/.data/.rsrc) and static heuristics (IAT/imports, entropy)
+- Payload encoding/encryption tradeoffs and signatured crypto/API usage (crypt32, base64, XOR patterns)
+- AV emulation cutoffs and anti-emulation instruction padding
+- ETW realities (user-mode patching limits) and AMSI considerations
+- Syscalls, ntdll hooking/unhooking, and callstack-based detections
+- Injection tradeoffs and alternative execution primitives / DLL sideloading
+
+Use Cases:
+- Designing Windows shellcode loaders that survive AV emulation and sandboxing
+- Reducing static indicators (suspicious imports, abnormal PE structure) without overfitting to myths
+- Prioritizing guardrails to prevent execution in VT/sandboxes and other middleboxes
+- Avoiding high-signal injection chains and choosing lower-noise execution methods
+- Evaluating third-party “EDR bypass” repos/blogs for unnecessary or counterproductive techniques
+
+Keywords:
+MalDev, shellcode loader, dropper, PE sections, .rsrc, IAT, imports, heuristic analysis, entropy, static analysis, AV emulation, sandbox evasion, execution guardrails, ETW, EtwWrite, AMSI, ntdll unhooking, direct syscalls, indirect syscalls, callstack analysis, CreateRemoteThread, VirtualAllocEx, WriteProcessMemory, DLL sideloading, EDR deconditioning, memory scanning, VirusTotal bypass

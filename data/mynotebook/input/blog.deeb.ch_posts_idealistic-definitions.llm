@@ -1,0 +1,31 @@
+Title:
+An Idealistic View of Malware Analysis Definitions (WTF is heuristics?)
+
+Type:
+Blog Post
+
+Short Summary (4–8 sentences max):
+- This post clarifies commonly-misunderstood malware analysis and detection terms: static analysis, dynamic analysis, heuristics, and “deterministic” (signature-like) detections.  
+- It frames static analysis as non-executing inspection of file bytes/structure (e.g., PE parsing) and dynamic analysis as execution-based observation (sandbox/emulator/EDR) of in-memory artifacts and runtime actions.  
+- Heuristics are described as “looks malicious” scoring/triage signals (entropy anomalies, suspicious imports/traits, generic patterns) rather than definitive proof, while deterministic detections are precise indicators with low false positives (e.g., unique YARA strings, known-bad hashes).  
+- The article highlights that “signature” rules can be either heuristic or deterministic depending on how specific the matched indicator is and how it’s interpreted.  
+- It also discusses behavioral detection via hooks/ETW (e.g., LSASS handle opens vs. actual credential-reading) and the ambiguous classification of emulation (“static emulation” vs dynamic).  
+- Useful for both red and blue teams to reason about why detections fire, where false positives come from, and how context changes interpretation.
+
+Technical Focus:
+- Static file analysis (PE parsing, imports/sections/headers)
+- Dynamic analysis (sandboxing, memory scanning, behavior observation)
+- Heuristic vs deterministic/signature-based detection models (scoring/thresholds)
+- YARA rule specificity and false-positive tradeoffs
+- Behavioral telemetry via API hooking and ETW
+- Emulation as a hybrid analysis technique
+
+Use Cases:
+- Calibrating YARA/signature rules to reduce false positives while retaining coverage
+- Explaining AV/EDR alert rationale to analysts and stakeholders
+- Red team planning around heuristic triggers (e.g., LSASS access, injection-like behavior)
+- Designing detection logic that separates “suspicious” from “high-confidence malicious”
+- Choosing appropriate analysis methods (static vs sandbox vs endpoint telemetry) during triage
+
+Keywords:
+static analysis, dynamic analysis, heuristics, deterministic detection, signature-based detection, YARA, PE (Portable Executable), imports, entropy, sandbox, emulator, memory scanning, behavior analysis, EDR, ETW, ntdll hooking, LSASS, OpenProcess, code injection, mimikatz, SHA256, MD5

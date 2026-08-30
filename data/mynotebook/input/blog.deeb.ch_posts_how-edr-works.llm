@@ -1,0 +1,26 @@
+Title:
+How EDR Works — The (Anti-)EDR Compendium (EDR functionality and bypasses in 2024/2025)
+
+Type:
+Blog Post
+
+Short Summary (4–8 sentences max):
+This post is a conceptual deep-dive into how modern Windows EDRs detect shellcode loaders, framed around three “bubbles of bane”: on-disk AV signatures/emulation, in-memory scanning, and telemetry/behavior correlation. It explains the main telemetry sources EDRs rely on (user-mode API hooks, AMSI, ETW/ETW-TI, and kernel callbacks) and how they’re enriched with process/memory introspection (PEB/EPROCESS, memory region classification, call stack analysis). The author maps common loader behaviors (RW→RX transitions, remote process operations, thread creation) to likely detection triggers and highlights why “fixing” one detection surface (e.g., memory encryption) often increases exposure on another (telemetry). It covers attacker tradecraft such as command-line and PPID spoofing, ETW/AMSI patching, direct/indirect syscalls, image/module stomping, and reflective loading, emphasizing TOCTOU and trust boundaries (e.g., PEB is mutable). The piece argues that sophisticated techniques like memory encryption and call stack spoofing aren’t always necessary if you minimize suspicious telemetry and understand what actually triggers scans. Useful primarily for red teamers and malware developers building loaders, but also valuable for defenders designing robust detections around call stacks, memory regions, and event correlation.
+
+Technical Focus:
+- Windows EDR telemetry pipelines (ETW, ETW-TI, kernel callbacks, user-mode hooks, AMSI)
+- AV signature scanning vs AV emulation (pre-execution) and memory scanning triggers
+- Memory region trust model (IMAGE/backed vs PRIVATE/unbacked, COW/working set checks)
+- Call stack and thread-state analysis for syscall/callback evasion detection
+- Loader tradecraft: RW→RX patterns, thread creation, remote process injection surfaces
+- Spoofing/patching techniques (PEB command line, PPID, ETW/AMSI patching, direct/indirect syscalls)
+
+Use Cases:
+- Build or harden custom shellcode loaders to reduce EDR telemetry and scanning triggers
+- Design detections around suspicious memory regions, RW→RX transitions, and thread start addresses
+- Evaluate bypass tradeoffs: memory encryption vs increased behavioral telemetry
+- Threat hunting: correlate process creation events with PEB/EPROCESS inconsistencies (args/PPID)
+- Assess injection techniques (hollowing, module stomping, reflective loading) and their observable artifacts
+
+Keywords:
+EDR, Microsoft Defender for Endpoint, Windows Defender, AMSI, ETW, ETW-TI, PsSetCreateProcessNotifyRoutine, ObRegisterCallbacks, ntdll.dll hooking, direct syscalls, indirect syscalls, SysWhispers, call stack analysis, memory scanning, YARA, AV emulation, VirtualAlloc, VirtualProtect, NtAllocateVirtualMemory, NtWriteVirtualMemory, CreateRemoteThread, process hollowing, module stomping, PEB spoofing, PPID spoofing, ETW patching, AmsiScanBuffer patching, PRIVATE vs IMAGE memory, Copy-on-Write, TOCTOU

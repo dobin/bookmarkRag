@@ -1,0 +1,25 @@
+Title:
+Cordyceps: Shellcode in EXE Injection (IAT/.rdata reuse via fixups)
+
+Type:
+Blog Post
+
+Short Summary (4–8 sentences max):
+This post describes a PE backdooring technique (“Cordyceps”) that injects shellcode into an existing EXE/DLL while preserving the host binary’s normal structure and behavior. The goal is to reduce EDR detection by avoiding common shellcode patterns like PEB-walking, API hashing, and explicit `LoadLibrary`/`GetProcAddress` resolution. Instead, the injected code is patched (“fixups”) to call Windows APIs through the target executable’s existing Import Address Table (IAT) using RIP-relative `call [rip+off]` sequences that remain valid under ASLR. It also moves/places required strings and data into `.rdata` and patches RIP-relative `lea` references so the payload looks like typical compiled code rather than shellcode with embedded suspicious blobs. This is useful for red teams and malware developers building stealthy initial access payload carriers, and for defenders to understand a class of “looks-like-normal-PE” injection that defeats simplistic heuristics.
+
+Technical Focus:
+- PE file modification / backdooring and section-aware injection
+- IAT reuse via RIP-relative call fixups (ASLR-safe)
+- Eliminating PEB-walk/API-resolver shellcode patterns
+- `.rdata` data placement and RIP-relative LEA fixups
+- EDR evasion via “IMAGE region” execution and reduced telemetry
+
+Use Cases:
+- Embedding a loader into a legitimate EXE while keeping original imports and code layout largely intact
+- Building payloads that call WinAPI without `GetProcAddress`/`LoadLibrary` shellcode stubs
+- Reducing behavioral/telemetry triggers associated with classic shellcode API resolution
+- Creating more “benign-looking” call stacks/threads originating from mapped IMAGE memory
+- Researching/detecting PE tampering that reuses IAT and adds `.rdata` artifacts
+
+Keywords:
+Windows PE, EXE injection, shellcode, IAT, Import Address Table, RIP-relative addressing, ASLR, `.text`, `.rdata`, fixups, PEB walk, GetProcAddress, LoadLibrary, VirtualAlloc, EDR evasion, IMAGE memory region, PE sections, backdooring, loader, SuperMega
