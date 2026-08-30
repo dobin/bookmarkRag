@@ -108,13 +108,12 @@
 			<div class="card h-100 shadow-sm">
 				<div class="card-body">
 					<h2 id="rest-heading" class="h4">REST API</h2>
-          <p class="text-muted">All endpoints accept JSON and return JSON. Replace <code>&lt;notebook&gt;</code> with a notebook name from the table.</p>
-          <h3 class="h6 mt-3">Search</h3>
-          <p class="mb-2"><code>POST /api/search</code> or <code>POST /&lt;notebook&gt;/api/search</code></p>
 					<pre class="bg-body-tertiary border rounded p-3"><code>curl -X POST "http://localhost:5000/api/search" \
   -H 'Content-Type: application/json' \
   -d '{"query":"Loader","kind":"summary"}'</code></pre>
-          <p class="small text-muted mb-0">Public endpoint powering the search box above. <code>kind</code> is <code>"content"</code>, <code>"summary"</code>, or <code>"semantic"</code>. For <code>/api/search</code>, <code>notebook</code> is optional (omit it to search all). Content and summary searches are literal and case-insensitive. Semantic search skips un-indexed notebooks, listing them in <code>result.unavailable_notebooks</code>.</p>
+					<p class="small text-muted mb-0">
+						<code>kind</code> is <code>"content"</code>, <code>"summary"</code>, or <code>"semantic"</code>. <br>
+					</p>
 				</div>
 			</div>
 		</section>
