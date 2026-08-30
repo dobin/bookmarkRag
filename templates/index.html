@@ -122,13 +122,18 @@
 			<div class="card h-100 shadow-sm">
 				<div class="card-body">
 					<h2 id="mcp-heading" class="h4">MCP server</h2>
-					<p class="text-muted">Configure the included read-only stdio server in an MCP-capable client.</p>
-					<p class="mb-2">Use <code>.vscode/mcp.json</code>, which starts <code>mcp_server.py</code> with the project virtual environment.</p>
+					<p class="text-muted">Connect an MCP-capable client to this website's public, read-only knowledge base.</p>
+					{% if mcp_url %}
+						<p class="mb-2">Add <code>{{ mcp_url }}</code> as a Streamable HTTP MCP server.</p>
+					{% else %}
+						<p class="mb-2">The public MCP URL will be available at <code>https://&lt;your-domain&gt;/mcp</code> once configured.</p>
+					{% endif %}
 					<ul class="mb-0">
 						<li><code>list_bookmarks(notebook=None)</code> lists catalog bookmarks.</li>
-						<li><code>search_documents(query, notebook=None, source="both", limit=100)</code> searches stored Markdown and summaries.</li>
+						<li><code>search_documents(query, notebook=None, source="summaries")</code> searches staged excerpts.</li>
+						<li><code>get_documents(document_refs, artifact="summary")</code> retrieves selected artifacts.</li>
 					</ul>
-					<p class="small text-muted mt-3 mb-0">MCP searches are literal, case-insensitive, and do not invoke GraphRAG or an LLM.</p>
+					<p class="small text-muted mt-3 mb-0">MCP searches are literal, case-insensitive, and do not invoke GraphRAG or an LLM. A local stdio server for a local checkout is also available in <code>.vscode/mcp.json</code>.</p>
 				</div>
 			</div>
 		</section>

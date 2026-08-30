@@ -50,9 +50,12 @@ def _graphrag_status(notebook: str) -> dict | None:
 def inject_notebooks():
     """Make notebooks and current_notebook available to all templates."""
     notebook = request.view_args.get("notebook", "") if request.view_args else ""
+    domain = config.BOOKMARK_RAG_DOMAIN
+    mcp_url = f"https://{domain}/mcp" if domain and "://" not in domain else f"{domain}/mcp"
     return {
         "app_name": config.APP_NAME,
         "app_description": config.APP_DESCRIPTION,
+        "mcp_url": mcp_url,
         "notebooks": config.NOTEBOOKS,
         "current_notebook": notebook,
         "is_authenticated": _is_authenticated(),

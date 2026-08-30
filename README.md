@@ -119,17 +119,67 @@ curl -X POST http://localhost:5000/<notebook>/api/search \
   -H 'Content-Type: application/json' \
   -d '{"query":"Windows exception handling","kind":"content","limit":100}'
 
-## MCP server
+## MCP servers
 
-AI agents can read the startup metadata catalog and search the downloaded knowledge base
-through the local, read-only MCP server. It uses `stdio`, so it does not open a
-network port and does not require GraphRAG, Firecrawl, or OpenAI credentials.
+BookmarkRag provides two read-only MCP integrations. Both expose the same staged
+retrieval tools and only search canonical Markdown, generated summaries, and
+startup-loaded bookmark metadata. They do not invoke GraphRAG or an LLM.
 
-Install the dependencies (including `mcp`) and use the provided VS Code server
-configuration in `.vscode/mcp.json`. It starts the project virtual environment
-with `mcp_server.py`.
+### Hosted MCP server (the website's data)
 
-The server exposes three tools designed for staged retrieval:
+Run the public Streamable HTTP server separately from Flask, then configure Caddy
+to forward the public `/mcp` path to it. This lets visitors connect their MCP
+client to the data hosted by this BookmarkRag deployment; no local repository or
+data download is required. The endpoint is public and read-only.
+
+Set the public domain and start the server on its own loopback port:
+
+```
+BOOKMARK_RAG_DOMAIN=bookmark-rag.example.com python mcp/mcp_http_server.py
+```
+
+The defaults are `127.0.0.1:8000` and `/mcp`. Override them with
+`MCP_HTTP_HOST`, `MCP_HTTP_PORT`, and `MCP_HTTP_PATH`. `BOOKMARK_RAG_DOMAIN` is
+required and protects the endpoint against unrecognised Host headers.
+
+For example, proxy the HTTPS endpoint through Caddy while leaving Flask on its
+own upstream:
+
+```
+bookmark-rag.example.com {
+    handle /mcp* {
+        reverse_proxy 127.0.0.1:8000
+    }
+
+    handle {
+        reverse_proxy 127.0.0.1:5000
+    }
+}
+```
+
+Visitors add the public URL to an MCP-capable client using that client's remote
+MCP configuration format. A typical configuration is:
+
+```
+{
+  "servers": {
+    "bookmark-rag": {
+      "type": "streamable-http",
+      "url": "https://bookmark-rag.example.com/mcp"
+    }
+  }
+}
+```
+
+### Local stdio server (the visitor's own data)
+
+AI agents can alternatively read a local checkout's downloaded knowledge base
+through `mcp/mcp_server.py`. It uses `stdio`, so it opens no network port and
+does not require GraphRAG, Firecrawl, or OpenAI credentials. The server itself
+is client-agnostic; `.vscode/mcp.json` is only a VS Code convenience
+configuration. It starts the project virtual environment with `mcp_server.py`.
+
+Both servers expose three tools designed for staged retrieval:
 
 * `list_bookmarks(notebook=None)` lists metadata-catalog-backed bookmarks. The
   catalog is created once when the server process starts, so metadata files
