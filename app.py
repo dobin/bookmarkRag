@@ -1,6 +1,11 @@
 import os
+from pathlib import Path
 
+from dotenv import load_dotenv
 from flask import Flask
+
+# Load the repository-local environment before importing modules that read it.
+load_dotenv(Path(__file__).resolve().with_name(".env"))
 
 import config
 from web.auth import auth_bp

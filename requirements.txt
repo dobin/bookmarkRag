@@ -5,3 +5,4 @@ flask
 mcp
 PyYAML
 pytest
+python-dotenv
