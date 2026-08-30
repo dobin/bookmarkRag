@@ -68,7 +68,7 @@
         {% for nb in notebooks %}
           <li>
             <a class="dropdown-item {% if nb == current_notebook %}active{% endif %}"
-              href="{{ url_for('bookmarks', notebook=nb) }}">
+              href="{{ url_for('bookmarks.bookmarks', notebook=nb) }}">
               {{ nb }}
             </a>
           </li>
@@ -87,19 +87,19 @@
         {% if is_authenticated %}
         <li class="nav-item">
           <a class="nav-link {% if request.endpoint == 'ask' %}active{% endif %}"
-             href="{{ url_for('ask', notebook=current_notebook) }}">Query</a>
+             href="{{ url_for('ask.ask', notebook=current_notebook) }}">Query</a>
         </li>
         <li class="nav-item">
           <a class="nav-link {% if request.endpoint in ('bookmarks', 'bookmarks_add', 'bookmarks_scrape_one', 'bookmarks_scrape_all', 'bookmarks_view', 'bookmarks_view_summary', 'bookmarks_summarize_one', 'bookmarks_summarize_all') %}active{% endif %}"
-             href="{{ url_for('bookmarks', notebook=current_notebook) }}">Bookmarks</a>
+             href="{{ url_for('bookmarks.bookmarks', notebook=current_notebook) }}">Bookmarks</a>
         </li>
         <li class="nav-item">
           <a class="nav-link {% if request.endpoint == 'search' %}active{% endif %}"
-             href="{{ url_for('search', notebook=current_notebook) }}">Search</a>
+             href="{{ url_for('search.search', notebook=current_notebook) }}">Search</a>
         </li>
         <li class="nav-item">
           <a class="nav-link {% if request.endpoint == 'logs' %}active{% endif %}"
-             href="{{ url_for('logs', notebook=current_notebook) }}">Logs</a>
+             href="{{ url_for('index.logs', notebook=current_notebook) }}">Logs</a>
         </li>
         {% endif %}
       </ul>
@@ -116,7 +116,7 @@
             {% for nb in notebooks %}
               <li>
                 <a class="dropdown-item {% if nb == current_notebook %}active{% endif %}"
-                       href="{{ url_for('bookmarks', notebook=nb) }}">
+                       href="{{ url_for('bookmarks.bookmarks', notebook=nb) }}">
                   {{ nb }}
                 </a>
               </li>
@@ -130,13 +130,13 @@
         <ul class="navbar-nav ms-lg-auto">
           {% if is_authenticated %}
           <li class="nav-item">
-            <form method="post" action="{{ url_for('logout') }}" class="d-inline">
+            <form method="post" action="{{ url_for('auth.logout') }}" class="d-inline">
               <button type="submit" class="btn btn-link nav-link text-light" style="text-decoration:none;">Logout</button>
             </form>
           </li>
           {% else %}
           <li class="nav-item">
-            <a class="nav-link text-light" href="{{ url_for('login') }}">Login</a>
+            <a class="nav-link text-light" href="{{ url_for('auth.login') }}">Login</a>
           </li>
           {% endif %}
         </ul>
@@ -152,13 +152,13 @@
     <nav class="nav nav-pills flex-column" aria-label="Notebook navigation">
       {% if is_authenticated %}
       <a class="nav-link {% if request.endpoint in ('bookmarks', 'bookmarks_add', 'bookmarks_scrape_one', 'bookmarks_scrape_all', 'bookmarks_view', 'bookmarks_view_summary', 'bookmarks_summarize_one', 'bookmarks_summarize_all') %}active{% endif %}"
-         href="{{ url_for('bookmarks', notebook=current_notebook) }}">Bookmarks</a>
+         href="{{ url_for('bookmarks.bookmarks', notebook=current_notebook) }}">Bookmarks</a>
       <a class="nav-link {% if request.endpoint == 'search' %}active{% endif %}"
-         href="{{ url_for('search', notebook=current_notebook) }}">Search</a>
+         href="{{ url_for('search.search', notebook=current_notebook) }}">Search</a>
       <a class="nav-link {% if request.endpoint == 'ask' %}active{% endif %}"
-         href="{{ url_for('ask', notebook=current_notebook) }}">Query</a>
+         href="{{ url_for('ask.ask', notebook=current_notebook) }}">Query</a>
       <a class="nav-link {% if request.endpoint == 'logs' %}active{% endif %}"
-         href="{{ url_for('logs', notebook=current_notebook) }}">Logs</a>
+         href="{{ url_for('index.logs', notebook=current_notebook) }}">Logs</a>
       {% endif %}
     </nav>
 

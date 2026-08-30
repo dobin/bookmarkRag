@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-import bookmark_store
+from services import bookmark_store
 
 
 @pytest.fixture

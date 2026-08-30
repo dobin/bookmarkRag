@@ -12,7 +12,7 @@ from typing import Optional
 
 from openai import OpenAI
 
-from scraper import url_to_filename
+from services.scraper import url_to_filename
 
 
 PROMPT = """

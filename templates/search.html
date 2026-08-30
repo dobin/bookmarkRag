@@ -18,7 +18,7 @@
 <h4 class="my-3">Search – <span class="text-muted">{{ current_notebook }}</span></h4>
 
 <form id="search-form" method="post" class="row g-2 align-items-end mb-4"
-      data-semantic-endpoint="{{ url_for('semantic_search_api', notebook=current_notebook) }}">
+      data-semantic-endpoint="{{ url_for('api.semantic_search_api', notebook=current_notebook) }}">
   <div class="col-md-6">
     <label for="query" class="form-label">Search query</label>
     <input type="text" class="form-control" id="query" name="query"
@@ -178,13 +178,13 @@
       actions.className = 'd-flex flex-wrap gap-1';
       if (result.filename && result.content_exists) {
         actions.append(semanticActionLink(
-          `{{ url_for('bookmarks_view', notebook=current_notebook) }}?filename=${encodeURIComponent(result.filename)}`,
+          `{{ url_for('bookmarks.bookmarks_view', notebook=current_notebook) }}?filename=${encodeURIComponent(result.filename)}`,
           'View', 'btn-outline-primary'
         ));
       }
       if (result.filename && result.summary_exists) {
         actions.append(semanticActionLink(
-          `{{ url_for('bookmarks_view_summary', notebook=current_notebook) }}?filename=${encodeURIComponent(result.filename)}`,
+          `{{ url_for('bookmarks.bookmarks_view_summary', notebook=current_notebook) }}?filename=${encodeURIComponent(result.filename)}`,
           'Summary', 'btn-outline-info'
         ));
       }

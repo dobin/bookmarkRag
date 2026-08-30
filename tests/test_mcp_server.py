@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-import bookmark_store
+from services import bookmark_store
 import mcp_server
 
 

@@ -108,13 +108,13 @@
 {% block content %}
 {# Session selector bar #}
 <div id="session-bar">
-  <form method="POST" action="{{ url_for('ask_new', notebook=current_notebook) }}" class="d-inline">
+  <form method="POST" action="{{ url_for('ask.ask_new', notebook=current_notebook) }}" class="d-inline">
     <button type="submit" class="btn btn-outline-primary btn-sm">+ New Chat</button>
   </form>
 
   <select class="form-select form-select-sm session-select"
           id="session-select"
-          data-base-url="{{ url_for('ask', notebook=current_notebook) }}">
+          data-base-url="{{ url_for('ask.ask', notebook=current_notebook) }}">
     {% for s in sessions %}
       <option value="{{ s.id }}" {% if s.id == current_session_id %}selected{% endif %}>
         {{ s.created[:16] | replace('T', ' ') }} — {{ s.preview }} ({{ s.count }})
@@ -122,7 +122,7 @@
     {% endfor %}
   </select>
 
-  <form method="POST" action="{{ url_for('ask_delete', notebook=current_notebook) }}" class="d-inline">
+  <form method="POST" action="{{ url_for('ask.ask_delete', notebook=current_notebook) }}" class="d-inline">
     <input type="hidden" name="session" value="{{ current_session_id }}">
     <button type="submit" class="btn btn-outline-danger btn-sm"
             onclick="return confirm('Delete this chat session?');"
@@ -182,7 +182,7 @@
           <ul class="list-unstyled mb-0 mt-1" style="font-size:0.8rem;">
             {% for src in entry.sources %}
               <li class="mb-1">
-                <a href="{{ url_for('bookmarks_view', notebook=entry.notebook, filename=src) }}"
+                <a href="{{ url_for('bookmarks.bookmarks_view', notebook=entry.notebook, filename=src) }}"
                    target="_blank" rel="noopener">
                   {{ src }}
                 </a>
@@ -203,7 +203,7 @@
   <div class="container-fluid px-2">
 
     {# Ask input #}
-    <form method="POST" action="{{ url_for('ask', notebook=current_notebook) }}" id="ask-form">
+    <form method="POST" action="{{ url_for('ask.ask', notebook=current_notebook) }}" id="ask-form">
       <input type="hidden" name="session" value="{{ current_session_id }}">
       <div class="mb-2">
         <textarea class="form-control" name="query" id="query-input"

@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 import pandas as pd
-from bookmark_store import (
+from services.bookmark_store import (
     MAX_QUERY_LENGTH,
     BookmarkStoreError,
     bookmark_urls_for_filename,
@@ -29,7 +29,7 @@ from graphrag_llm.embedding import create_embedding
 
 logger = logging.getLogger(__name__)
 
-_BASE_DIR = Path(__file__).resolve().parent
+_BASE_DIR = Path(__file__).resolve().parent.parent
 
 DEFAULT_SEMANTIC_SEARCH_LIMIT = 100
 MAX_SEMANTIC_SEARCH_LIMIT = 2_000

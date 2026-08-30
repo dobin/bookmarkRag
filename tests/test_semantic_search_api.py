@@ -5,8 +5,10 @@ import pandas as pd
 import pytest
 
 import app
-import bookmark_store
-import graphrag_api
+import config
+from services import bookmark_store
+from services import graphrag_api
+from web import views_api
 
 
 @pytest.fixture
@@ -33,9 +35,9 @@ def semantic_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     monkeypatch.setattr(bookmark_store, "GRAG_DIR", grag_dir)
     bookmark_store.initialize_catalog()
     monkeypatch.setattr(graphrag_api, "_BASE_DIR", tmp_path)
-    monkeypatch.setattr(app, "_BASE_DIR", tmp_path)
-    monkeypatch.setattr(app, "NOTEBOOKS", ["alpha"])
-    monkeypatch.setattr(app, "ADMIN_PASSWORD", "test-password")
+    monkeypatch.setattr(config, "_BASE_DIR", tmp_path)
+    monkeypatch.setattr(config, "NOTEBOOKS", ["alpha"])
+    monkeypatch.setattr(config, "ADMIN_PASSWORD", "test-password")
     app.app.config.update(TESTING=True, SECRET_KEY="test-secret")
     return tmp_path
 
@@ -135,7 +137,7 @@ def test_file_search_endpoint_supports_summary_and_content_sources(semantic_root
 
 
 def test_file_search_uses_configured_domain_and_artifact_urls(semantic_root: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(app, "BOOKMARK_RAG_DOMAIN", "bookmark-rag.ch")
+    monkeypatch.setattr(config, "BOOKMARK_RAG_DOMAIN", "bookmark-rag.ch")
     client = app.app.test_client()
 
     response = client.post("/alpha/api/file-search", json={"query": "source", "source": "input"})
@@ -163,7 +165,7 @@ def test_index_loads_configured_notebook_descriptions(
     (semantic_root / "notebook_descriptions.yaml").write_text(
         'alpha: "A test notebook."\n', encoding="utf-8"
     )
-    monkeypatch.setattr(app, "NOTEBOOK_DESCRIPTIONS_ENABLED", True)
+    monkeypatch.setattr(config, "NOTEBOOK_DESCRIPTIONS_ENABLED", True)
 
     response = app.app.test_client().get("/")
 
@@ -177,7 +179,7 @@ def test_index_hides_descriptions_when_disabled(
     (semantic_root / "notebook_descriptions.yaml").write_text(
         'alpha: "A test notebook."\n', encoding="utf-8"
     )
-    monkeypatch.setattr(app, "NOTEBOOK_DESCRIPTIONS_ENABLED", False)
+    monkeypatch.setattr(config, "NOTEBOOK_DESCRIPTIONS_ENABLED", False)
 
     response = app.app.test_client().get("/")
 
@@ -198,7 +200,7 @@ def test_semantic_endpoint_returns_results_and_hides_backend_errors(
     assert response.get_json()["results"][0]["text"] == "Retrieved source chunk."
 
     monkeypatch.setattr(
-        app,
+        views_api,
         "semantic_search",
         lambda query, notebook, limit: (_ for _ in ()).throw(
             graphrag_api.SemanticSearchError("sensitive provider detail")

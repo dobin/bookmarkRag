@@ -29,13 +29,13 @@
       </span>
       <div class="d-flex gap-2">
         {% if is_authenticated %}
-        <form method="POST" action="{{ url_for('bookmarks_summarize_all', notebook=current_notebook) }}">
+        <form method="POST" action="{{ url_for('bookmarks.bookmarks_summarize_all', notebook=current_notebook) }}">
           <button type="submit" class="btn btn-outline-info btn-sm"
                   onclick="return confirm('Summarize all scraped bookmarks without a summary?')">
             Summarize All Scraped
           </button>
         </form>
-        <form method="POST" action="{{ url_for('bookmarks_scrape_all', notebook=current_notebook) }}">
+        <form method="POST" action="{{ url_for('bookmarks.bookmarks_scrape_all', notebook=current_notebook) }}">
           <button type="submit" class="btn btn-outline-secondary btn-sm"
                   onclick="return confirm('Scrape all pending bookmarks?')">
             Scrape All Pending
@@ -66,11 +66,11 @@
             <td>
               <div class="d-flex gap-1 flex-wrap">
                 {% if entry.scraped %}
-                  <a href="{{ url_for('bookmarks_view', notebook=current_notebook, filename=entry.filename) }}"
+                  <a href="{{ url_for('bookmarks.bookmarks_view', notebook=current_notebook, filename=entry.filename) }}"
                      class="btn btn-outline-primary btn-sm">View</a>
                 {% endif %}
                 {% if entry.summarized %}
-                  <a href="{{ url_for('bookmarks_view_summary', notebook=current_notebook, filename=entry.filename) }}"
+                  <a href="{{ url_for('bookmarks.bookmarks_view_summary', notebook=current_notebook, filename=entry.filename) }}"
                      class="btn btn-outline-info btn-sm">Summary</a>
                 {% endif %}
               </div>
@@ -78,14 +78,14 @@
             <td>
               {% if is_authenticated %}
               <div class="d-flex gap-1 flex-wrap">
-                <form method="POST" action="{{ url_for('bookmarks_scrape_one', notebook=current_notebook) }}" class="d-inline">
+                <form method="POST" action="{{ url_for('bookmarks.bookmarks_scrape_one', notebook=current_notebook) }}" class="d-inline">
                   <input type="hidden" name="url" value="{{ entry.url }}">
                   <button type="submit" class="btn btn-outline-secondary btn-sm">
                     {{ 'Re-scrape' if entry.scraped else 'Scrape' }}
                   </button>
                 </form>
                 {% if entry.scraped %}
-                  <form method="POST" action="{{ url_for('bookmarks_summarize_one', notebook=current_notebook) }}" class="d-inline">
+                  <form method="POST" action="{{ url_for('bookmarks.bookmarks_summarize_one', notebook=current_notebook) }}" class="d-inline">
                     <input type="hidden" name="url" value="{{ entry.url }}">
                     <button type="submit" class="btn btn-outline-info btn-sm">
                       {{ 'Re-summarize' if entry.summarized else 'Summarize' }}

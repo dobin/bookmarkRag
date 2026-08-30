@@ -8,7 +8,7 @@ import json
 from pathlib import Path
 from firecrawl import FirecrawlApp
 
-from bookmark_store import url_to_filename
+from services.bookmark_store import url_to_filename
 
 FIRECRAWL_API_KEY = os.environ.get("FIRECRAWL_API_KEY")
 
