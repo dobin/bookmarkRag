@@ -3,7 +3,7 @@
 {% block head %}
 <style>
   .search-results td { vertical-align: middle; }
-  .search-result-file { min-width: 15rem; max-width: 24rem; }
+  .search-result-url { min-width: 15rem; max-width: 24rem; }
   .search-result-match { min-width: 24rem; white-space: pre-wrap; word-break: break-word; }
   .semantic-result-text { max-height: 18rem; overflow-y: auto; white-space: pre-wrap; word-break: break-word; }
 </style>
@@ -15,7 +15,7 @@
   <div class="col-md-{% if scoped_notebook %}7{% else %}5{% endif %}">
     <label for="query" class="form-label">Search query</label>
     <input type="text" class="form-control" id="query" name="query" value="{{ query }}"
-           placeholder="Enter a term or describe a topic…" autofocus required>
+           placeholder="Search term" autofocus required>
   </div>
   <div class="col-md-2">
     <label for="kind" class="form-label">Search type</label>
@@ -79,14 +79,17 @@
     {% if result.matches %}
     <div class="table-responsive">
       <table class="table table-sm table-hover search-results" style="font-size: .85rem;">
-        <thead class="table-light"><tr><th>Notebook</th><th>File</th><th class="text-end">Line</th><th>Matching text</th><th>Actions</th></tr></thead>
+        <thead class="table-light"><tr><th>Notebook</th><th>URL</th><th>Matching text</th><th>Actions</th></tr></thead>
         <tbody>
           {% for item in result.matches %}
           <tr>
             <td class="text-muted">{{ item.notebook }}</td>
-            <td class="search-result-file font-monospace text-break">{{ item.filename }}</td>
-            <td class="text-end text-muted">{{ item.line_number }}</td>
-            <td class="search-result-match font-monospace">{{ item.line }}</td>
+            <td class="search-result-url text-break">
+              {% for url in item.bookmark_urls %}<a href="{{ url }}" target="_blank" rel="noopener noreferrer">{{ url }}</a>{% if not loop.last %}<br>{% endif %}{% else %}<span class="text-muted">No URL available</span>{% endfor %}
+            </td>
+            <td class="search-result-match font-monospace">{%- for mention in item.lines -%}
+              <div{% if not loop.last %} class="mb-2"{% endif %}><span class="text-muted">{{ mention.line_number }}:</span> {{ mention.line }}</div>
+            {%- endfor -%}</td>
             <td><div class="d-flex flex-wrap gap-1">
               {% set filename = item.filename[:-4] + '.md' if item.source == 'summaries' else item.filename %}
               {% if item.content_exists %}<a href="{{ url_for('bookmarks.bookmarks_view', notebook=item.notebook, filename=filename) }}" class="btn btn-outline-primary btn-sm">Content</a>{% endif %}

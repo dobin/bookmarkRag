@@ -248,7 +248,8 @@ def search_documents(
     limit = _validated_limit(limit)
     notebooks = [validate_notebook(notebook)] if notebook is not None else list_notebooks()
     needle = query.casefold()
-    results: list[dict] = []
+    result_groups: dict[tuple[str, str, str], dict] = {}
+    returned_matches = 0
     matched_files: set[tuple[str, str, str]] = set()
     skipped_files = 0
     truncated = False
@@ -277,19 +278,21 @@ def search_documents(
                     if needle not in line.casefold():
                         continue
                     matched_files.add((name, result_source, filepath.name))
-                    if len(results) >= limit:
+                    if returned_matches >= limit:
                         truncated = True
                         break
-                    results.append({
+                    key = (name, result_source, filepath.name)
+                    group = result_groups.setdefault(key, {
                         "notebook": name,
                         "source": result_source,
                         "filename": filepath.name,
-                        "line_number": line_number,
-                        "line": line,
                         "content_exists": content_exists,
                         "summary_exists": has_summary,
                         "bookmark_urls": bookmark_urls_for_filename(name, content_filename),
+                        "lines": [],
                     })
+                    group["lines"].append({"line_number": line_number, "line": line})
+                    returned_matches += 1
                 if truncated:
                     break
             if truncated:
@@ -301,9 +304,10 @@ def search_documents(
         "query": query,
         "source": source,
         "notebooks": notebooks,
-        "matches": results,
+        "matches": list(result_groups.values()),
         "matched_files": len(matched_files),
-        "returned_matches": len(results),
+        "returned_files": len(result_groups),
+        "returned_matches": returned_matches,
         "truncated": truncated,
         "skipped_files": skipped_files,
     }

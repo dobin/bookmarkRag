@@ -94,8 +94,9 @@ def test_searches_both_sources_literally(store_root: Path) -> None:
     result = bookmark_store.search_documents("[SPECIAL]", source="both")
 
     assert result["returned_matches"] == 1
+    assert result["returned_files"] == 1
     assert result["matches"][0]["source"] == "input"
-    assert result["matches"][0]["line"] == "A [special] match"
+    assert result["matches"][0]["lines"] == [{"line_number": 1, "line": "A [special] match"}]
     assert result["matches"][0]["bookmark_urls"] == ["https://example.test/a"]
 
 
@@ -108,5 +109,25 @@ def test_search_limit_and_invalid_notebook(store_root: Path) -> None:
 
     assert result["truncated"] is True
     assert result["returned_matches"] == 1
+    assert result["returned_files"] == 1
+    assert result["matches"][0]["lines"] == [{"line_number": 1, "line": "needle"}]
     with pytest.raises(bookmark_store.BookmarkStoreError):
         bookmark_store.list_bookmarks("../alpha")
+
+
+def test_search_groups_all_matching_lines_by_file(store_root: Path) -> None:
+    input_dir = store_root / "data" / "alpha" / "input"
+    _write_metadata(input_dir, "page.json", {"url": "https://example.test/page"})
+    (input_dir / "page.md").write_text("needle one\nnot a match\nneedle two\n", encoding="utf-8")
+    bookmark_store.initialize_catalog()
+
+    result = bookmark_store.search_documents("needle", notebook="alpha", source="input")
+
+    assert result["matched_files"] == 1
+    assert result["returned_files"] == 1
+    assert result["returned_matches"] == 2
+    assert len(result["matches"]) == 1
+    assert result["matches"][0]["lines"] == [
+        {"line_number": 1, "line": "needle one"},
+        {"line_number": 3, "line": "needle two"},
+    ]
