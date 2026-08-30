@@ -11,15 +11,15 @@ set -euo pipefail
 
 SOURCE_DIR="${1:-/mnt/c/Users/dobin/Repos/AwesomeMalDevLinks/data/out}"
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-GRAG_DIR="$REPO_DIR/grag"
+DATA_DIR="$REPO_DIR/data"
 
 if [[ ! -d "$SOURCE_DIR" ]]; then
 	printf 'Source directory does not exist: %s\n' "$SOURCE_DIR" >&2
 	exit 1
 fi
 
-if [[ ! -d "$GRAG_DIR" ]]; then
-	printf 'GraphRAG directory does not exist: %s\n' "$GRAG_DIR" >&2
+if [[ ! -d "$DATA_DIR" ]]; then
+	printf 'Data directory does not exist: %s\n' "$DATA_DIR" >&2
 	exit 1
 fi
 
@@ -38,6 +38,6 @@ while IFS= read -r -d '' topic_dir; do
 	cp -a "$source_topic_dir/." "$destination_dir/"
 	printf 'Copied %s -> %s\n' "$source_topic_dir" "$destination_dir"
 	((copied += 1))
-done < <(find "$GRAG_DIR" -mindepth 1 -maxdepth 1 -type d -print0)
+done < <(find "$DATA_DIR" -mindepth 1 -maxdepth 1 -type d -print0)
 
 printf 'Finished: copied %d topic(s).\n' "$copied"

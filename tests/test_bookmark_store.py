@@ -8,10 +8,10 @@ from services import bookmark_store
 
 @pytest.fixture
 def store_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    (tmp_path / "grag" / "alpha" / "input").mkdir(parents=True)
-    (tmp_path / "grag" / "empty").mkdir(parents=True)
+    (tmp_path / "data" / "alpha" / "input").mkdir(parents=True)
+    (tmp_path / "data" / "empty").mkdir(parents=True)
     monkeypatch.setattr(bookmark_store, "BASE_DIR", tmp_path)
-    monkeypatch.setattr(bookmark_store, "GRAG_DIR", tmp_path / "grag")
+    monkeypatch.setattr(bookmark_store, "DATA_DIR", tmp_path / "data")
     return tmp_path
 
 
@@ -20,7 +20,7 @@ def _write_metadata(directory: Path, filename: str, data: object) -> None:
 
 
 def test_catalog_lists_legacy_metadata_and_live_artifacts(store_root: Path) -> None:
-    input_dir = store_root / "grag" / "alpha" / "input"
+    input_dir = store_root / "data" / "alpha" / "input"
     _write_metadata(
         input_dir,
         "page.html.json",
@@ -43,7 +43,7 @@ def test_catalog_lists_legacy_metadata_and_live_artifacts(store_root: Path) -> N
 
 
 def test_catalog_recognizes_co_located_summary(store_root: Path) -> None:
-    input_dir = store_root / "grag" / "alpha" / "input"
+    input_dir = store_root / "data" / "alpha" / "input"
     _write_metadata(input_dir, "page.json", {"url": "https://example.test/page"})
     (input_dir / "page.md").write_text("source", encoding="utf-8")
     (input_dir / "page.llm").write_text("summary needle", encoding="utf-8")
@@ -57,7 +57,7 @@ def test_catalog_recognizes_co_located_summary(store_root: Path) -> None:
 
 
 def test_catalog_supports_json_objects_duplicates_and_snapshot_behavior(store_root: Path) -> None:
-    input_dir = store_root / "grag" / "alpha" / "input"
+    input_dir = store_root / "data" / "alpha" / "input"
     _write_metadata(input_dir, "a.json", {"url": "https://example.test/a", "title": "A"})
     _write_metadata(input_dir, "b.json", {"url": "https://example.test/a", "title": "B"})
     bookmark_store.initialize_catalog()
@@ -70,7 +70,7 @@ def test_catalog_supports_json_objects_duplicates_and_snapshot_behavior(store_ro
 
 
 def test_catalog_skips_invalid_metadata_and_falls_back_to_source_url(store_root: Path) -> None:
-    input_dir = store_root / "grag" / "alpha" / "input"
+    input_dir = store_root / "data" / "alpha" / "input"
     _write_metadata(input_dir, "fallback.json", {
         "url": "mailto:invalid@example.test", "source_url": "https://example.test/fallback",
     })
@@ -85,7 +85,7 @@ def test_catalog_skips_invalid_metadata_and_falls_back_to_source_url(store_root:
 
 
 def test_searches_both_sources_literally(store_root: Path) -> None:
-    input_dir = store_root / "grag" / "alpha" / "input"
+    input_dir = store_root / "data" / "alpha" / "input"
     _write_metadata(input_dir, "example.test_a.json", {"url": "https://example.test/a"})
     (input_dir / "example.test_a.md").write_text("A [special] match\n", encoding="utf-8")
     (input_dir / "example.test_a.llm").write_text("special SUMMARY\n", encoding="utf-8")
@@ -100,7 +100,7 @@ def test_searches_both_sources_literally(store_root: Path) -> None:
 
 
 def test_search_limit_and_invalid_notebook(store_root: Path) -> None:
-    document = store_root / "grag" / "alpha" / "input" / "orphan.md"
+    document = store_root / "data" / "alpha" / "input" / "orphan.md"
     document.write_text("needle\nneedle\n", encoding="utf-8")
     bookmark_store.initialize_catalog()
 

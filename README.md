@@ -31,7 +31,7 @@ all descriptions while keeping the configuration file intact.
 
 ## Directories
 
-* `grag/<notebook>/`: graphrag directory
+* `data/<notebook>/`: GraphRAG notebook directory
   * `input/*.json`: source metadata used to build the in-memory bookmark catalog at server startup
   * `input/`: downloaded Markdown, source metadata (`*.json`), and generated summaries (`*.llm`)
 
@@ -40,17 +40,17 @@ all descriptions while keeping the configuration file intact.
 Setup an initial document database called `mynotebook`:
 
 ```
-$ mkdir grag/mynotebook
-$ cd grag/mynotebook
-grag/mynotebook$ graphrag init
-grag/mynotebook$ vi `settings.yaml`
-grag/mynotebook$ cp <documents>/* input/
-grag/mynotebook$ graphrag index
+$ mkdir data/mynotebook
+$ cd data/mynotebook
+data/mynotebook$ graphrag init
+data/mynotebook$ vi `settings.yaml`
+data/mynotebook$ cp <documents.md> input/
+data/mynotebook$ graphrag index
 ```
 
 To update:
 ```
-grag/mynotebook$ graphrag index
+data/mynotebook$ graphrag index
 ```
 
 If input is `.md` files, edit `settings.yaml`:
@@ -116,7 +116,7 @@ The server exposes two tools:
 * `list_bookmarks(notebook=None)` lists metadata-catalog-backed bookmarks. The
   catalog is created once when the server process starts, so metadata files
   added later require a restart. Without a
-  notebook it aggregates every directory under `grag/`; each bookmark result
+  notebook it aggregates every directory under `data/`; each bookmark result
   identifies its notebook and reports whether its Markdown and summary files
   exist.
 * `search_documents(query, notebook=None, source="both", limit=100)` performs
@@ -164,12 +164,12 @@ retrieve context and use a completion model to synthesize an answer.
 
 ## Cost
 
-Using `grag/maldev/`, with 11MB of `input/` data:
+Using `data/maldev/`, with 11MB of `input/` data:
 * Using `gpt-5.4-mini` and `text-embedding-3-small`
 * Indexing cost 130$
 * One query cost around 5$
 
-Using `grag/maldev/`, with 3MB of `input/` data:
+Using `data/maldev/`, with 3MB of `input/` data:
 * Using `gpt-5-mini` (input 0.25$, output 2$) and `text-embedding-3-small`:
 * indexing 100 documents (3MB): 16$
 

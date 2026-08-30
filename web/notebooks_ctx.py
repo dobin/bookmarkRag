@@ -15,7 +15,7 @@ def _graphrag_status(notebook: str) -> dict | None:
     if not notebook:
         return None
 
-    output_dir = config._BASE_DIR / "grag" / notebook / "output"
+    output_dir = config._BASE_DIR / "data" / notebook / "output"
     required_files = (
         "documents.parquet",
         "text_units.parquet",

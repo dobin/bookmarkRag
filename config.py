@@ -11,5 +11,5 @@ NOTEBOOK_DESCRIPTIONS_ENABLED = os.environ.get(
 ).casefold() not in {"0", "false", "no", "off"}
 
 ASK_METHODS = ["local", "global", "drift", "basic"]
-_GRAG_DIR = _BASE_DIR / "grag"
-NOTEBOOKS = sorted(p.name for p in _GRAG_DIR.iterdir() if p.is_dir()) if _GRAG_DIR.is_dir() else []
+_DATA_DIR = _BASE_DIR / "data"
+NOTEBOOKS = sorted(p.name for p in _DATA_DIR.iterdir() if p.is_dir()) if _DATA_DIR.is_dir() else []

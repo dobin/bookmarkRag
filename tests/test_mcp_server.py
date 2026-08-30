@@ -16,7 +16,7 @@ def test_search_tool_returns_validation_errors_as_data() -> None:
 
 
 def test_tools_read_startup_metadata_catalog(tmp_path: Path, monkeypatch) -> None:
-    input_dir = tmp_path / "grag" / "alpha" / "input"
+    input_dir = tmp_path / "data" / "alpha" / "input"
     input_dir.mkdir(parents=True)
     (input_dir / "page.json").write_text(
         json.dumps({"url": "https://example.test/page", "title": "Example"}),
@@ -24,7 +24,7 @@ def test_tools_read_startup_metadata_catalog(tmp_path: Path, monkeypatch) -> Non
     )
     (input_dir / "page.md").write_text("needle", encoding="utf-8")
     monkeypatch.setattr(bookmark_store, "BASE_DIR", tmp_path)
-    monkeypatch.setattr(bookmark_store, "GRAG_DIR", tmp_path / "grag")
+    monkeypatch.setattr(bookmark_store, "DATA_DIR", tmp_path / "data")
     bookmark_store.initialize_catalog()
 
     assert mcp_server.list_bookmarks("alpha")["bookmarks"][0]["url"] == "https://example.test/page"

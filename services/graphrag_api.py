@@ -70,7 +70,7 @@ def semantic_search(
     """
     notebook = validate_notebook(notebook)
     query, limit = _validate_semantic_search_request(query, limit)
-    root_dir = _BASE_DIR / "grag" / notebook
+    root_dir = _BASE_DIR / "data" / notebook
     output_dir = root_dir / "output"
     text_units_path = output_dir / "text_units.parquet"
     documents_path = output_dir / "documents.parquet"
@@ -156,7 +156,7 @@ def semantic_search(
 
 def local_search(query: str, notebook: str, community_level: int = 2) -> tuple[str, Any]:
     """Local search: entity/neighborhood focused. Best for specific entity questions."""
-    root_dir = _BASE_DIR / "grag" / notebook
+    root_dir = _BASE_DIR / "data" / notebook
     return run_local_search(
         data_dir=None,          # uses output_storage.base_dir from settings.yaml
         root_dir=root_dir,
@@ -170,7 +170,7 @@ def local_search(query: str, notebook: str, community_level: int = 2) -> tuple[s
 
 def global_search(query: str, notebook: str, community_level: int = 2) -> tuple[str, Any]:
     """Global search: community/summary focused. Best for broad thematic questions."""
-    root_dir = _BASE_DIR / "grag" / notebook
+    root_dir = _BASE_DIR / "data" / notebook
     return run_global_search(
         data_dir=None,
         root_dir=root_dir,
@@ -185,7 +185,7 @@ def global_search(query: str, notebook: str, community_level: int = 2) -> tuple[
 
 def drift_search(query: str, notebook: str, community_level: int = 2) -> tuple[str, Any]:
     """DRIFT search: dynamic reasoning with follow-up. Combines local + global depth."""
-    root_dir = _BASE_DIR / "grag" / notebook
+    root_dir = _BASE_DIR / "data" / notebook
     return run_drift_search(
         data_dir=None,
         root_dir=root_dir,
@@ -199,7 +199,7 @@ def drift_search(query: str, notebook: str, community_level: int = 2) -> tuple[s
 
 def basic_search(query: str, notebook: str) -> tuple[str, Any]:
     """Basic search: simple text-unit vector search, no graph reasoning."""
-    root_dir = _BASE_DIR / "grag" / notebook
+    root_dir = _BASE_DIR / "data" / notebook
     return run_basic_search(
         data_dir=None,
         root_dir=root_dir,
@@ -217,7 +217,7 @@ def resolve_sources(context_data: dict, notebook: str) -> list[str]:
     text_units.parquet -> documents.parquet to get the original filenames.
     """
     # Use absolute path because graphrag's run_*_search changes cwd
-    output_dir = Path(__file__).resolve().parent / "grag" / notebook / "output"
+    output_dir = _BASE_DIR / "data" / notebook / "output"
     tu_path = output_dir / "text_units.parquet"
     doc_path = output_dir / "documents.parquet"
 

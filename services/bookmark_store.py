@@ -10,7 +10,7 @@ from typing import Literal
 import re
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-GRAG_DIR = BASE_DIR / "grag"
+DATA_DIR = BASE_DIR / "data"
 
 logger = logging.getLogger(__name__)
 
@@ -50,11 +50,11 @@ def url_to_filename(url: str) -> str:
 
 def list_notebooks() -> list[str]:
     """Return supported notebook names in deterministic order."""
-    if not GRAG_DIR.is_dir():
+    if not DATA_DIR.is_dir():
         return []
     return sorted(
         path.name
-        for path in GRAG_DIR.iterdir()
+        for path in DATA_DIR.iterdir()
         if path.is_dir() and not path.name.startswith(".")
     )
 
@@ -68,7 +68,7 @@ def validate_notebook(notebook: str) -> str:
 
 def input_dir(notebook: str) -> Path:
     """Return the Markdown input directory for a validated notebook."""
-    return GRAG_DIR / validate_notebook(notebook) / "input"
+    return DATA_DIR / validate_notebook(notebook) / "input"
 
 
 def summary_path(notebook: str, filename: str) -> Path:
@@ -142,7 +142,7 @@ def _build_catalog() -> Catalog:
     catalog: Catalog = {}
     for notebook in list_notebooks():
         entries: list[BookmarkMetadata] = []
-        metadata_dir = GRAG_DIR / notebook / "input"
+        metadata_dir = DATA_DIR / notebook / "input"
         if metadata_dir.is_dir():
             for metadata_path in sorted(metadata_dir.glob("*.json")):
                 fields = _metadata_fields(metadata_path)

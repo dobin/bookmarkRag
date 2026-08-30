@@ -14,7 +14,7 @@ current_sessions: dict[str, str] = {}
 
 
 def _chat_dir(notebook: str) -> Path:
-    return config._BASE_DIR / "grag" / notebook / "chat"
+    return config._BASE_DIR / "data" / notebook / "chat"
 
 
 def _create_session() -> dict:

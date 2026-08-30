@@ -49,7 +49,7 @@ def index():
 def logs(notebook: str):
     if notebook not in config.NOTEBOOKS:
         abort(404)
-    logs_dir = config._BASE_DIR / "grag" / notebook / "logs"
+    logs_dir = config._BASE_DIR / "data" / notebook / "logs"
     log_files = {}
     if logs_dir.exists():
         for path in sorted(logs_dir.glob("*.log")):

@@ -13,8 +13,8 @@ from web import views_api
 
 @pytest.fixture
 def semantic_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    grag_dir = tmp_path / "grag"
-    notebook_dir = grag_dir / "alpha"
+    data_dir = tmp_path / "data"
+    notebook_dir = data_dir / "alpha"
     output_dir = notebook_dir / "output"
     (output_dir / "lancedb").mkdir(parents=True)
     (notebook_dir / "input").mkdir()
@@ -32,7 +32,7 @@ def semantic_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     }]).to_parquet(output_dir / "documents.parquet")
 
     monkeypatch.setattr(bookmark_store, "BASE_DIR", tmp_path)
-    monkeypatch.setattr(bookmark_store, "GRAG_DIR", grag_dir)
+    monkeypatch.setattr(bookmark_store, "DATA_DIR", data_dir)
     bookmark_store.initialize_catalog()
     monkeypatch.setattr(graphrag_api, "_BASE_DIR", tmp_path)
     monkeypatch.setattr(config, "_BASE_DIR", tmp_path)

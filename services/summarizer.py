@@ -2,8 +2,8 @@
 """
 LLM Summarizer for scraped markdown files.
 
-Processes .md files in grag/<notebook>/input/ and generates
-LLM summaries saved as .llm files alongside Markdown in grag/<notebook>/input/.
+Processes .md files in data/<notebook>/input/ and generates
+LLM summaries saved as .llm files alongside Markdown in data/<notebook>/input/.
 """
 
 import os
@@ -100,14 +100,14 @@ def summarize_url(url: str, notebook: str, force: bool = False) -> tuple[bool, s
     """
     Generate an LLM summary for a single URL.
 
-    Reads grag/<notebook>/input/<url_to_filename(url)>.md and writes the
-    summary to grag/<notebook>/input/<url_to_filename(url)>.llm.
+    Reads data/<notebook>/input/<url_to_filename(url)>.md and writes the
+    summary to data/<notebook>/input/<url_to_filename(url)>.llm.
 
     Returns (success, error_message). error_message is None on success.
     Skips (returns True, None) if the .llm already exists and force=False.
     """
     base = url_to_filename(url)
-    input_path = Path("grag") / notebook / "input" / f"{base}.md"
+    input_path = Path("data") / notebook / "input" / f"{base}.md"
     llm_path = input_path.with_suffix(".llm")
 
     if llm_path.exists() and not force:
@@ -136,12 +136,12 @@ def summarize_url(url: str, notebook: str, force: bool = False) -> tuple[bool, s
 
 def summarize_all(notebook: str) -> tuple[int, int, list[str]]:
     """
-    Summarize all scraped .md files in grag/<notebook>/input/ that do not yet
-    have a corresponding co-located .llm summary in grag/<notebook>/input/.
+    Summarize all scraped .md files in data/<notebook>/input/ that do not yet
+    have a corresponding co-located .llm summary in data/<notebook>/input/.
 
     Returns (ok_count, skipped_count, error_messages).
     """
-    input_dir = Path("grag") / notebook / "input"
+    input_dir = Path("data") / notebook / "input"
 
     if not input_dir.exists():
         return 0, 0, [f"Input directory does not exist: {input_dir}"]
