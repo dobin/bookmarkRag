@@ -60,6 +60,17 @@ input:
   file_pattern: ".*\\.md$$"
 ```
 
+## Install
+
+Use Python 3.13 or earlier. Python 3.14 may force `litellm` to compile from
+source.
+
+```
+uv python install 3.13
+uv venv --python 3.13 .venv
+source .venv/bin/activate
+uv pip install -r requirements.txt
+```
 
 ## Start
 
