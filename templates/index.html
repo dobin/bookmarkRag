@@ -3,7 +3,7 @@
 {% block title %}{{ app_name }}{% endblock %}
 
 {% block content %}
-<div class="pt-0 pb-4 pb-lg-5">
+<div class="pt-3 pb-4 pb-lg-5">
 	<div class="mb-5">
 		<h1 class="display-6 fw-bold">{{ app_name }}</h1>
 		<p class="lead text-muted mb-0">{{ app_description }}</p>
@@ -67,7 +67,7 @@
 						<col style="width: 16%;">
 						<col style="width: 8%;">
 					</colgroup>
-					<thead class="table-light">
+					<thead>
 						<tr>
 							<th scope="col">Notebook</th>
 							<th scope="col">Summary</th>
@@ -113,7 +113,7 @@
           <p class="mb-2"><code>POST /api/search</code> or <code>POST /&lt;notebook&gt;/api/search</code></p>
 					<pre class="bg-body-tertiary border rounded p-3"><code>curl -X POST "http://localhost:5000/api/search" \
   -H 'Content-Type: application/json' \
-  -d '{"query":"Windows exception handling","kind":"semantic"}'</code></pre>
+  -d '{"query":"Loader","kind":"summary"}'</code></pre>
           <p class="small text-muted mb-0">Public endpoint powering the search box above. <code>kind</code> is <code>"content"</code>, <code>"summary"</code>, or <code>"semantic"</code>. For <code>/api/search</code>, <code>notebook</code> is optional (omit it to search all). Content and summary searches are literal and case-insensitive. Semantic search skips un-indexed notebooks, listing them in <code>result.unavailable_notebooks</code>.</p>
 				</div>
 			</div>

@@ -62,7 +62,7 @@
       <div class="card-body">
         <h5 class="card-title h6 font-monospace text-break">{{ item.filename or 'Unknown document' }}</h5>
         <p class="card-subtitle mb-2 text-muted small">{{ item.notebook }} · Score {{ '%.4f'|format(item.score) }} · Text unit {{ item.short_id }}</p>
-        <pre class="semantic-result-text bg-light border rounded p-2 mb-3 small">{{ item.text }}</pre>
+        <pre class="semantic-result-text bg-body-tertiary border rounded p-2 mb-3 small">{{ item.text }}</pre>
         <div class="d-flex flex-wrap gap-1">
           {% if item.filename and item.content_exists %}<a href="{{ url_for('bookmarks.bookmarks_view', notebook=item.notebook, filename=item.filename) }}" class="btn btn-outline-primary btn-sm">Content</a>{% endif %}
           {% if item.filename and item.summary_exists %}<a href="{{ url_for('bookmarks.bookmarks_view_summary', notebook=item.notebook, filename=item.filename) }}" class="btn btn-outline-info btn-sm">Summary</a>{% endif %}
@@ -79,7 +79,7 @@
     {% if result.matches %}
     <div class="table-responsive">
       <table class="table table-sm table-hover search-results" style="font-size: .85rem;">
-        <thead class="table-light"><tr><th>Notebook</th><th>URL</th><th>Matching text</th><th>Actions</th></tr></thead>
+        <thead><tr><th>Notebook</th><th>URL</th><th>Matching text</th><th>Actions</th></tr></thead>
         <tbody>
           {% for item in result.matches %}
           <tr>

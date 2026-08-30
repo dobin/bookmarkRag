@@ -17,7 +17,7 @@
     align-items: center;
     gap: 0.5rem;
     padding: 0.4rem 0;
-    border-bottom: 1px solid #dee2e6;
+    border-bottom: 1px solid var(--bs-border-color);
     font-size: 0.85rem;
     height: 42px;
   }
@@ -47,8 +47,8 @@
   }
   .bubble-assistant .bubble-body {
     max-width: 80%;
-    background: #f0f0f0;
-    color: #212529;
+    background: var(--bs-tertiary-bg);
+    color: var(--bs-body-color);
     border-radius: 1rem 1rem 1rem 0.15rem;
     padding: 0.6rem 1rem;
     word-break: break-word;
@@ -64,7 +64,7 @@
     font-size: 0.8rem;
   }
   .bubble-body .md-content code {
-    background: rgba(0,0,0,0.08);
+    background: var(--bs-secondary-bg);
     padding: 0.1em 0.35em;
     border-radius: 0.2rem;
     font-size: 0.85em;
@@ -81,8 +81,8 @@
   /* Sources box */
   .sources-box {
     max-width: 80%;
-    background: #f8f9fa;
-    border: 1px solid #dee2e6;
+    background: var(--bs-tertiary-bg);
+    border: 1px solid var(--bs-border-color);
     border-radius: 0.5rem;
     padding: 0.4rem 0.8rem;
     font-size: 0.8rem;
@@ -97,8 +97,8 @@
     bottom: 0;
     left: 0;
     right: 0;
-    background: #fff;
-    border-top: 1px solid #dee2e6;
+    background: var(--bs-body-bg);
+    border-top: 1px solid var(--bs-border-color);
     padding: 0.75rem 1.5rem;
     z-index: 1000;
   }
@@ -145,10 +145,10 @@
       <div class="bubble-body">
         <div>{{ entry.query }}</div>
         <div class="mt-1" style="font-size:0.75rem; opacity:0.8;">
-          <span class="badge bg-light text-dark">{{ entry.notebook }}</span>
-          <span class="badge bg-light text-dark">{{ entry.method }}</span>
+          <span class="badge text-bg-secondary">{{ entry.notebook }}</span>
+          <span class="badge text-bg-secondary">{{ entry.method }}</span>
           {% if entry.method != 'basic' %}
-            <span class="badge bg-light text-dark">level {{ entry.community_level }}</span>
+            <span class="badge text-bg-secondary">level {{ entry.community_level }}</span>
           {% endif %}
           <span class="ms-1">{{ entry.timestamp }}</span>
         </div>

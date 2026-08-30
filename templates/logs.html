@@ -26,7 +26,7 @@
     {% if log_files|length == 1 %}
       {# Single log file - show directly without tabs #}
       {% for name, content in log_files.items() %}
-        <div class="mb-2" style="font-size:0.85rem; color:#666;">
+        <div class="mb-2 text-muted" style="font-size:0.85rem;">
           📄 {{ name }}
         </div>
         <pre class="log-content" id="log-content">{{ content }}</pre>
