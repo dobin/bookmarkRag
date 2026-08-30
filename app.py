@@ -22,4 +22,5 @@ app.register_blueprint(search_bp)
 app.register_blueprint(api_bp)
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    prod = os.environ.get("PROD", "").casefold() in {"1", "true", "yes", "on"}
+    app.run(host="0.0.0.0" if prod else "127.0.0.1", debug=not prod)
