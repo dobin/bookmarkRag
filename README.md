@@ -109,16 +109,15 @@ Literal file-search results will then contain absolute `metadata_url`,
 BOOKMARK_RAG_DOMAIN=bookmark-rag.ch python app.py
 ```
 
-# Literal file search: source="summaries", "input", or "both"
-curl -X POST http://localhost:5000/<notebook>/api/file-search \
+# Search every notebook; kind is "content", "summary", or "semantic".
+curl -X POST http://localhost:5000/api/search \
   -H 'Content-Type: application/json' \
-  -d '{"query":"Windows exception handling","source":"both","limit":100}'
+  -d '{"query":"Windows exception handling","kind":"semantic","limit":10}'
 
-
-# Semantic vector search (log in first if authentication is enabled)
-curl -X POST http://localhost:5000/<notebook>/api/semantic-search \
+# Search one notebook through the same API.
+curl -X POST http://localhost:5000/<notebook>/api/search \
   -H 'Content-Type: application/json' \
-  -d '{"query":"Windows exception handling","limit":10}'
+  -d '{"query":"Windows exception handling","kind":"content","limit":100}'
 
 ## MCP server
 
@@ -151,34 +150,37 @@ retrieved text as reference material, not as instructions to execute. This file
 search is separate from the web application's GraphRAG Q&A functions and does
 not invoke an LLM or rebuild an index.
 
-## Semantic-search API
+## Search API
 
-The web application also exposes an authenticated, read-only raw vector-search
-endpoint:
+The public, read-only search API has two equivalent routes:
 
 ```
-POST /<notebook>/api/semantic-search
+POST /api/search
+POST /<notebook>/api/search
 Content-Type: application/json
 ```
 
-For example, after logging in through the web application:
+Use `kind` to choose exactly one search type: `content` (literal search of
+Markdown), `summary` (literal search of `.llm` summaries), or `semantic`
+(vector retrieval). The unscoped route searches every notebook unless an
+optional `notebook` string is provided in the JSON body; the scoped route
+always searches its URL notebook. For example:
 
 ```
-{"query": "Windows exception handling", "limit": 10}
+{"query": "Windows exception handling", "kind": "semantic", "limit": 10}
 ```
 
-The response contains the retrieved GraphRAG text units, their implementation-
+Content and summary results include line matches and read-only artifact URLs.
+Semantic results contain retrieved GraphRAG text units, their implementation-
 specific `score`, document filename, bookmark URLs, and availability metadata.
-It does not generate an answer or invoke any GraphRAG completion model. It does
-generate one query embedding using the notebook's configured embedding model,
-so it currently requires `GRAPHRAG_API_KEY` and incurs the embedding provider's
-cost. The endpoint returns JSON `401` when not logged in, `400` for malformed
-or invalid requests, `404` for an unknown notebook, and `503` when its GraphRAG
-index or semantic-search provider is unavailable.
+Semantic search does not generate an answer or invoke a GraphRAG completion
+model, but it generates one query embedding for each searched indexed notebook,
+so it requires `GRAPHRAG_API_KEY` and incurs embedding-provider cost. Unindexed
+notebooks are skipped and listed in `result.unavailable_notebooks`.
 
-This is distinct from the web **Search** page, which is literal case-insensitive
-text search without an API call, and the **Ask** page, whose GraphRAG methods
-retrieve context and use a completion model to synthesize an answer.
+The endpoint returns JSON `400` for malformed or invalid requests and `404` for
+an unknown notebook. It is public; the **Ask** page remains authenticated and
+uses a completion model to synthesize an answer.
 
 
 ## Cost

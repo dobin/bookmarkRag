@@ -9,6 +9,49 @@
 		<p class="lead text-muted mb-0">{{ app_description }}</p>
 	</div>
 
+	<section class="mb-5" aria-labelledby="public-search-heading">
+		<h2 id="public-search-heading" class="h3 mb-3">Search everything</h2>
+		<div class="card shadow-sm">
+			<div class="card-body">
+        <form action="{{ url_for('search.search') }}" method="get" class="row g-2 align-items-end">
+					<div class="col-md-6">
+						<label for="public-search-query" class="form-label">Search query</label>
+						<input type="text" class="form-control" id="public-search-query" name="query"
+						       placeholder="Enter a term or describe a topic…" autocomplete="off" required>
+					</div>
+					<div class="col-md-2">
+						<label for="public-search-kind" class="form-label">Search</label>
+            <select class="form-select" id="public-search-kind" name="kind">
+			  <option value="content">Content</option>
+			  <option value="summary" selected>Summary</option>
+              <option value="semantic">Semantic</option>
+						</select>
+					</div>
+					<div class="col-md-2">
+						<label for="public-search-notebook" class="form-label">Notebook</label>
+            <select class="form-select" id="public-search-notebook" name="notebook">
+							<option value="" selected>All notebooks</option>
+							{% for notebook in notebook_rows %}
+							<option value="{{ notebook.name }}">{{ notebook.name }}</option>
+							{% endfor %}
+						</select>
+					</div>
+					<div class="col-md-2">
+						<button type="submit" class="btn btn-primary w-100" id="public-search-btn">
+							<span id="public-search-label">Search</span>
+							<span id="public-search-spinner" class="spinner-border spinner-border-sm ms-1 d-none"
+							      role="status" aria-hidden="true"></span>
+						</button>
+					</div>
+				</form>
+				<p class="small text-muted mt-2 mb-0">
+          Content and summary searches match literal text. Semantic search finds related chunks by meaning
+          across the selected notebook(s). No login required; no LLM answer is generated.
+				</p>
+			</div>
+    </div>
+	</section>
+
 	<section class="mb-5" aria-labelledby="notebooks-heading">
 		<div class="d-flex align-items-center justify-content-between mb-3">
 			<h2 id="notebooks-heading" class="h3 mb-0">Notebooks</h2>
@@ -65,19 +108,13 @@
 			<div class="card h-100 shadow-sm">
 				<div class="card-body">
 					<h2 id="rest-heading" class="h4">REST API</h2>
-					<p class="text-muted">All endpoints accept JSON and return JSON. Replace <code>&lt;notebook&gt;</code> with a notebook name from the table.</p>
-					<h3 class="h6 mt-3">File search</h3>
-					<p class="mb-2"><code>POST /&lt;notebook&gt;/api/file-search</code></p>
-					<pre class="bg-body-tertiary border rounded p-3"><code>curl -X POST "http://localhost:5000/&lt;notebook&gt;/api/file-search" \
+          <p class="text-muted">All endpoints accept JSON and return JSON. Replace <code>&lt;notebook&gt;</code> with a notebook name from the table.</p>
+          <h3 class="h6 mt-3">Search</h3>
+          <p class="mb-2"><code>POST /api/search</code> or <code>POST /&lt;notebook&gt;/api/search</code></p>
+					<pre class="bg-body-tertiary border rounded p-3"><code>curl -X POST "http://localhost:5000/api/search" \
   -H 'Content-Type: application/json' \
-  -d '{"query":"Windows exception handling","source":"both","limit":100}'</code></pre>
-					<p class="small text-muted">Use <code>source: "summaries"</code> for <code>.llm</code> summaries, <code>"input"</code> for full <code>.md</code> content, or <code>"both"</code> (the default). Search is literal and case-insensitive.</p>
-					<h3 class="h6 mt-4">Semantic search</h3>
-					<p class="mb-2"><code>POST /&lt;notebook&gt;/api/semantic-search</code></p>
-					<pre class="bg-body-tertiary border rounded p-3 mb-0"><code>curl -X POST "http://localhost:5000/&lt;notebook&gt;/api/semantic-search" \
-  -H 'Content-Type: application/json' \
-  -d '{"query":"Windows exception handling","limit":10}'</code></pre>
-					<p class="small text-muted mt-3 mb-0">This endpoint requires login when authentication is enabled. It returns matching vector text units and metadata; it does not generate an answer.</p>
+  -d '{"query":"Windows exception handling","kind":"semantic"}'</code></pre>
+          <p class="small text-muted mb-0">Public endpoint powering the search box above. <code>kind</code> is <code>"content"</code>, <code>"summary"</code>, or <code>"semantic"</code>. For <code>/api/search</code>, <code>notebook</code> is optional (omit it to search all). Content and summary searches are literal and case-insensitive. Semantic search skips un-indexed notebooks, listing them in <code>result.unavailable_notebooks</code>.</p>
 				</div>
 			</div>
 		</section>

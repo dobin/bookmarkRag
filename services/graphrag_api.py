@@ -13,6 +13,7 @@ from services.bookmark_store import (
     BookmarkStoreError,
     bookmark_urls_for_filename,
     input_dir,
+    list_notebooks,
     summary_exists,
     validate_notebook,
 )
@@ -151,6 +152,48 @@ def semantic_search(
         "limit": limit,
         "results": results,
         "returned_results": len(results),
+    }
+
+
+def semantic_search_all(
+    query: object,
+    notebook: str | None = None,
+    limit: object = DEFAULT_SEMANTIC_SEARCH_LIMIT,
+) -> dict:
+    """Semantic search across one notebook or every discovered notebook.
+
+    When ``notebook`` is ``None`` every notebook is queried and results are
+    merged by descending score. Notebooks without a ready GraphRAG index are
+    skipped (reported in ``unavailable_notebooks``) rather than failing the
+    whole request. The query and limit are validated once, up front, so a bad
+    request fails fast before any notebook is embedded or searched.
+    """
+    # Validate the request once so invalid input never fans out to N notebooks.
+    query, limit = _validate_semantic_search_request(query, limit)
+    notebooks = [validate_notebook(notebook)] if notebook is not None else list_notebooks()
+
+    merged: list[dict] = []
+    unavailable: list[str] = []
+    for name in notebooks:
+        try:
+            result = semantic_search(query, notebook=name, limit=limit)
+        except SemanticSearchError:
+            # A single un-indexed notebook must not break a cross-notebook search.
+            unavailable.append(name)
+            continue
+        for row in result["results"]:
+            row["notebook"] = name
+        merged.extend(result["results"])
+
+    merged.sort(key=lambda row: row["score"], reverse=True)
+    trimmed = merged[:limit]
+    return {
+        "query": query,
+        "notebooks": notebooks,
+        "limit": limit,
+        "results": trimmed,
+        "returned_results": len(trimmed),
+        "unavailable_notebooks": unavailable,
     }
 
 
