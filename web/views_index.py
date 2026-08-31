@@ -44,6 +44,11 @@ def index():
     return render_template("index.html", notebook_rows=notebook_rows)
 
 
+@index_bp.route("/about")
+def about():
+    return render_template("about.html")
+
+
 @index_bp.route("/<notebook>/logs")
 @login_required
 def logs(notebook: str):

@@ -118,6 +118,10 @@
 
       {# Notebook selector - visible in collapsed mobile menu #}
       <ul class="navbar-nav d-lg-none">
+        <li class="nav-item">
+          <a class="nav-link {% if request.endpoint == 'index.about' %}active{% endif %}"
+             href="{{ url_for('index.about') }}">About</a>
+        </li>
         <li class="nav-item dropdown">
           <a class="nav-link dropdown-toggle" href="#" id="notebookDropdownCollapsed"
              role="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -136,9 +140,16 @@
         </li>
       </ul>
 
+      <ul class="navbar-nav d-none d-lg-flex ms-lg-auto">
+        <li class="nav-item">
+          <a class="nav-link text-light {% if request.endpoint == 'index.about' %}active{% endif %}"
+             href="{{ url_for('index.about') }}">About</a>
+        </li>
+      </ul>
+
       {# Auth links #}
       {% if authentication_enabled %}
-        <ul class="navbar-nav ms-lg-auto">
+        <ul class="navbar-nav ms-lg-0">
           {% if is_authenticated %}
           <li class="nav-item">
             <form method="post" action="{{ url_for('auth.logout') }}" class="d-inline">
